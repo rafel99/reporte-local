@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Al Tanto — Barquisimeto</title>
+<meta name="description" content="Mapa comunitario de luz, agua e incidencias en Barquisimeto, en tiempo real.">
+<meta name="theme-color" content="#0B0F17">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg: #FAF6EF;
+    --surface: #FFFFFF;
+    --surface-2: #F2ECDD;
+    --border: #E3D9C3;
+    --text: #201D17;
+    --text-muted: #6E6759;
+    --accent-luz: #B9720A;
+    --accent-luz-soft: #F3E0BC;
+    --accent-agua: #157B77;
+    --accent-agua-soft: #D8EEEC;
+    --accent-incidente: #C43E1C;
+    --accent-incidente-soft: #F6DCD3;
+    --ok: #3F7D45;
+    --ok-soft: #DCEFDD;
+    --shadow: 0 8px 24px -12px rgba(32,29,23,0.28);
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-body: 'Public Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #0B0F17;
+      --surface: #131A26;
+      --surface-2: #1B2433;
+      --border: #2A3547;
+      --text: #F2EEE6;
+      --text-muted: #A9AFBC;
+      --accent-luz: #E8A33D;
+      --accent-luz-soft: #3A2C15;
+      --accent-agua: #3FC2BC;
+      --accent-agua-soft: #123230;
+      --accent-incidente: #F0684A;
+      --accent-incidente-soft: #3A1A12;
+      --ok: #6FCB77;
+      --ok-soft: #16301A;
+      --shadow: 0 8px 28px -12px rgba(0,0,0,0.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #0B0F17;
+    --surface: #131A26;
+    --surface-2: #1B2433;
+    --border: #2A3547;
+    --text: #F2EEE6;
+    --text-muted: #A9AFBC;
+    --accent-luz: #E8A33D;
+    --accent-luz-soft: #3A2C15;
+    --accent-agua: #3FC2BC;
+    --accent-agua-soft: #123230;
+    --accent-incidente: #F0684A;
+    --accent-incidente-soft: #3A1A12;
+    --ok: #6FCB77;
+    --ok-soft: #16301A;
+    --shadow: 0 8px 28px -12px rgba(0,0,0,0.55);
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  [hidden]{ display:none !important; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,h2,h3{ font-family: var(--font-display); text-wrap: balance; margin: 0; }
+  button{ font-family: inherit; }
+  .mono{ font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  a{ color: var(--accent-agua); }
+
+  .app{
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 0 96px;
+  }
+
+  header.top{
+    display:flex; align-items:center; justify-content: space-between;
+    gap: 12px; padding: 16px 16px 12px;
+  }
+  .brand{ display:flex; align-items:center; gap: 10px; }
+  .brand-mark{
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--text);
+    display:flex; align-items:center; justify-content:center;
+    flex: none;
+  }
+  .brand-mark svg{ width: 18px; height:18px; }
+  .brand h1{ font-size: 1.28rem; font-weight: 600; line-height:1; }
+  .brand p{ margin: 3px 0 0; font-size: 0.78rem; color: var(--text-muted); }
+  .icon-btn{
+    width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .icon-btn:hover{ background: var(--surface-2); }
+
+  .banner{
+    margin: 0 16px 12px; padding: 10px 14px; border-radius: 10px;
+    font-size: 0.85rem; display:flex; gap:8px; align-items:flex-start;
+    border: 1px solid var(--border);
+  }
+  .banner.demo{ background: var(--accent-luz-soft); color: var(--text); }
+  .banner.offline{ background: var(--surface-2); color: var(--text-muted); }
+
+  .tabs{
+    display:flex; gap: 8px; padding: 0 16px 14px; overflow-x:auto;
+  }
+  .tab{
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); border-radius: 999px; padding: 7px 14px;
+    font-size: 0.84rem; font-weight: 600; cursor:pointer; white-space:nowrap;
+    display:flex; align-items:center; gap:6px;
+  }
+  .tab[aria-pressed="true"]{ background: var(--text); color: var(--bg); border-color: var(--text); }
+  .dot{ width:8px; height:8px; border-radius:999px; flex:none; }
+  .dot.luz{ background: var(--accent-luz); }
+  .dot.agua{ background: var(--accent-agua); }
+  .dot.incidente{ background: var(--accent-incidente); }
+
+  .layout{
+    display:grid; grid-template-columns: 1fr; gap: 16px; padding: 0 16px;
+  }
+  @media (min-width: 860px){
+    .layout{ grid-template-columns: 1.4fr 1fr; align-items:start; }
+  }
+
+  #map{
+    height: 46vh; min-height: 320px; border-radius: 16px; border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  @media (min-width: 860px){ #map{ height: 62vh; position: sticky; top: 16px; } }
+
+  .feed{
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px; box-shadow: var(--shadow);
+  }
+  .feed h2{ font-size: 1rem; font-weight:600; margin-bottom: 2px; }
+  .feed .sub{ font-size: 0.78rem; color: var(--text-muted); margin: 0 0 10px; }
+  .feed-list{ display:flex; flex-direction:column; gap:8px; max-height: 52vh; overflow-y:auto; }
+  .report-row{
+    display:flex; gap:10px; align-items:flex-start; padding: 10px; border-radius: 12px;
+    background: var(--surface-2);
+  }
+  .report-row .badge{
+    width: 30px; height:30px; border-radius:9px; flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .report-row .badge.luz{ background: var(--accent-luz-soft); color: var(--accent-luz); }
+  .report-row .badge.agua{ background: var(--accent-agua-soft); color: var(--accent-agua); }
+  .report-row .badge.incidente{ background: var(--accent-incidente-soft); color: var(--accent-incidente); }
+  .report-row .zona{ font-weight:600; font-size:0.9rem; }
+  .report-row .estado{ font-size: 0.84rem; color: var(--text); }
+  .report-row .meta{ font-size: 0.74rem; color: var(--text-muted); margin-top:2px; }
+  .report-row .nota{ font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; font-style: italic; }
+  .empty{ font-size: 0.85rem; color: var(--text-muted); padding: 18px 6px; text-align:center; }
+
+  .fab{
+    position: fixed; right: 18px; bottom: 22px; z-index: 500;
+    background: var(--text); color: var(--bg); border: none; border-radius: 999px;
+    padding: 14px 20px; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    box-shadow: var(--shadow); display:flex; align-items:center; gap:8px;
+  }
+
+  .sheet-backdrop{
+    position: fixed; inset:0; background: rgba(10,10,8,0.45); z-index: 900;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  @media (min-width: 640px){ .sheet-backdrop{ align-items:center; } }
+  .sheet-backdrop[hidden]{ display:none; }
+  .sheet{
+    background: var(--surface); width:100%; max-width: 480px;
+    border-radius: 20px 20px 0 0; padding: 20px; max-height: 88vh; overflow-y:auto;
+  }
+  @media (min-width: 640px){ .sheet{ border-radius: 20px; } }
+  .sheet h2{ font-size: 1.15rem; margin-bottom: 4px; }
+  .sheet .step-sub{ font-size: 0.82rem; color: var(--text-muted); margin: 0 0 16px; }
+  .choice-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin-bottom: 14px; }
+  .choice-grid.two{ grid-template-columns: repeat(2,1fr); }
+  .choice-grid.one{ grid-template-columns: 1fr; }
+  .choice-card{
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 8px;
+    background: var(--surface-2); text-align:center; cursor:pointer; font-size:0.82rem; font-weight:600;
+    color: var(--text);
+  }
+  .choice-card .em{ display:block; font-size: 1.4rem; margin-bottom: 4px; }
+  .choice-card[aria-pressed="true"]{ border-color: currentColor; background: var(--accent-luz-soft); }
+  .choice-card.agua[aria-pressed="true"]{ background: var(--accent-agua-soft); }
+  .choice-card.incidente[aria-pressed="true"]{ background: var(--accent-incidente-soft); }
+
+  label.field{ display:block; font-size: 0.8rem; font-weight:600; margin: 12px 0 6px; }
+  select, textarea{
+    width:100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    font-family: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text);
+  }
+  textarea{ resize: vertical; min-height: 60px; }
+  .char-count{ font-size: 0.72rem; color: var(--text-muted); text-align:right; margin-top:3px; }
+
+  .disclaimer{
+    background: var(--accent-incidente-soft); color: var(--text); border-radius: 10px;
+    padding: 10px 12px; font-size: 0.78rem; margin: 14px 0; line-height:1.4;
+  }
+  .disclaimer strong{ color: var(--accent-incidente); }
+
+  .sheet-actions{ display:flex; gap:10px; margin-top: 16px; }
+  .btn{
+    flex:1; border-radius: 10px; padding: 12px; font-weight:700; font-size:0.9rem;
+    cursor:pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  .btn.primary{ background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn[disabled]{ opacity: 0.45; cursor:not-allowed; }
+
+  .toast{
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px;
+    font-size: 0.85rem; font-weight:600; z-index: 1000; box-shadow: var(--shadow);
+    opacity:0; pointer-events:none; transition: opacity 0.25s ease;
+  }
+  .toast.show{ opacity:1; }
+
+  .leaflet-popup-content-wrapper{ background: var(--surface); color: var(--text); border-radius: 12px; }
+  .leaflet-popup-tip{ background: var(--surface); }
+  .popup h3{ font-size: 0.95rem; margin-bottom:6px; }
+  .popup .line{ font-size: 0.8rem; margin: 3px 0; display:flex; align-items:center; gap:6px; }
+
+  footer.about-note{ text-align:center; font-size:0.72rem; color: var(--text-muted); padding: 18px 16px 0; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#E8A33D"/></svg>
+      </div>
+      <div>
+        <h1>Al Tanto</h1>
+        <p>Barquisimeto, en tiempo real</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="infoBtn" title="Acerca de esta app" aria-label="Acerca de esta app">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+    </button>
+  </header>
+
+  <div id="demoBanner" class="banner demo" hidden>
+    <span>⚙️</span>
+    <span>Modo demostración con datos de ejemplo. Conecta tu proyecto de Supabase (ver <code>SETUP.md</code>) para recibir reportes reales de la comunidad.</span>
+  </div>
+  <div id="offlineBanner" class="banner offline" hidden>
+    <span>📶</span>
+    <span id="offlineText">Sin conexión — mostrando la última información guardada.</span>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Filtrar por categoría">
+    <button class="tab" data-filter="todos" aria-pressed="true">Todos</button>
+    <button class="tab" data-filter="luz" aria-pressed="false"><span class="dot luz"></span>Luz</button>
+    <button class="tab" data-filter="agua" aria-pressed="false"><span class="dot agua"></span>Agua</button>
+    <button class="tab" data-filter="incidente" aria-pressed="false"><span class="dot incidente"></span>Incidencias</button>
+  </div>
+
+  <div class="layout">
+    <div id="map" role="application" aria-label="Mapa de Barquisimeto con el estado reportado por parroquia"></div>
+
+    <section class="feed">
+      <h2>Reportes recientes</h2>
+      <p class="sub">Ordenados del más nuevo al más viejo · últimas 48 horas</p>
+      <div class="feed-list" id="feedList"></div>
+    </section>
+  </div>
+
+  <footer class="about-note">Al Tanto es un proyecto comunitario e independiente. La información es enviada por vecinos y no ha sido verificada oficialmente.</footer>
+</div>
+
+<button class="fab" id="reportBtn">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+  Reportar
+</button>
+
+<div class="toast" id="toast"></div>
+
+<!-- Hoja de reporte -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden>
+  <div class="sheet">
+    <div id="stepCategoria">
+      <h2>¿Qué quieres reportar?</h2>
+      <p class="step-sub">Elige una categoría para continuar</p>
+      <div class="choice-grid one">
+        <div class="choice-card" data-categoria="luz" style="color:var(--accent-luz)"><span class="em">💡</span>Luz eléctrica</div>
+        <div class="choice-card agua" data-categoria="agua" style="color:var(--accent-agua)"><span class="em">🚰</span>Agua</div>
+        <div class="choice-card incidente" data-categoria="incidente" style="color:var(--accent-incidente)"><span class="em">⚠️</span>Incidencia (árbol, vía, incendio...)</div>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn" id="cancelBtn1">Cancelar</button>
+      </div>
+    </div>
+
+    <form id="reportForm" hidden>
+      <h2 id="formTitle">Reportar</h2>
+      <p class="step-sub" id="formSub"></p>
+
+      <div id="subtipoGrid" class="choice-grid two"></div>
+
+      <div id="disclaimerBox" class="disclaimer" hidden>
+        <strong>Esto no es una línea de emergencia.</strong> Si hay peligro real para vidas o bienes, llama al <strong>171</strong> (Servicio de Emergencias de Lara), a Protección Civil (166) o a Bomberos (167).
+      </div>
+
+      <label class="field" for="zonaSelect">Parroquia</label>
+      <select id="zonaSelect" required></select>
+
+      <label class="field" for="notaInput">Nota (opcional)</label>
+      <textarea id="notaInput" maxlength="140" placeholder="Ej: desde hace 3 horas, cerca de la plaza..."></textarea>
+      <div class="char-count"><span id="charCount">0</span>/140</div>
+
+      <div class="sheet-actions">
+        <button type="button" class="btn" id="cancelBtn2">Atrás</button>
+        <button type="submit" class="btn primary" id="submitBtn" disabled>Enviar reporte</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Acerca de -->
+<div class="sheet-backdrop" id="aboutBackdrop" hidden>
+  <div class="sheet">
+    <h2>Acerca de Al Tanto</h2>
+    <p class="step-sub" style="margin-bottom:10px;">Un mapa hecho por y para la comunidad de Barquisimeto.</p>
+    <p style="font-size:0.85rem; line-height:1.5;">
+      Cada reporte lo envía una persona de tu zona, de forma anónima — no pedimos nombre, teléfono ni cuenta.
+      Por eso la información es comunitaria y no oficial: dos vecinos pueden reportar cosas distintas de la misma parroquia,
+      y por eso mostramos siempre la hora de cada reporte, para que decidas qué tan vigente está.
+    </p>
+    <div class="disclaimer" style="margin-top:14px;">
+      <strong>En una emergencia real</strong> (incendio activo, estructura colapsada, personas heridas), no dependas de esta app:
+      llama al <strong>171</strong> (Emergencias Lara), Protección Civil (166) o Bomberos (167).
+    </div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="closeAboutBtn">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* =========================================================================
+   CONFIGURACIÓN — edita estas dos líneas con los datos de TU proyecto
+   de Supabase (Project Settings -> API). Mientras estén vacías, la app
+   funciona en modo demostración con datos de ejemplo.
+   Ver SETUP.md para el paso a paso.
+========================================================================= */
+const SUPABASE_URL = "https://jemkjjkuqvfkfmsndpuq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_njAh9COS-E1glqV-KSqMSQ_eGMLoSIQ";
+/* ========================================================================= */
+
+const DEMO_MODE = !SUPABASE_URL || !SUPABASE_ANON_KEY;
+
+// Zonas piloto: parroquias del municipio Iribarren (Barquisimeto).
+// Coordenadas aproximadas para ubicar el marcador — ajústalas si tienes
+// datos más precisos de los límites parroquiales reales.
+const ZONAS = [
+  { id: "catedral",        nombre: "Catedral",                 lat: 10.0678, lng: -69.3474 },
+  { id: "concepcion",      nombre: "Concepción",                lat: 10.0733, lng: -69.3452 },
+  { id: "juan_de_villegas", nombre: "Juan de Villegas (Ana Soto)", lat: 10.0611, lng: -69.3612 },
+  { id: "santa_rosa",      nombre: "Santa Rosa",                lat: 10.0231, lng: -69.3689 },
+  { id: "union",           nombre: "Unión",                     lat: 10.0847, lng: -69.3178 },
+  { id: "tamaca",          nombre: "Tamaca",                    lat: 10.1206, lng: -69.3697 },
+  { id: "buena_vista",     nombre: "Buena Vista",               lat: 10.1042, lng: -69.3389 },
+  { id: "juarez",          nombre: "Juárez",                    lat: 10.0597, lng: -69.3122 },
+  { id: "felipe_alvarado", nombre: "Aguedo Felipe Alvarado",    lat: 10.0389, lng: -69.3286 },
+];
+
+const SUBTIPOS = {
+  luz: [
+    { id: "corte",       label: "No hay luz",   em: "🌑" },
+    { id: "intermitente", label: "Fluctuando",  em: "🔀" },
+    { id: "restablecido", label: "Volvió la luz", em: "✅" },
+  ],
+  agua: [
+    { id: "corte",       label: "No hay agua",  em: "🚱" },
+    { id: "intermitente", label: "Poca presión", em: "🔀" },
+    { id: "restablecido", label: "Volvió el agua", em: "✅" },
+  ],
+  incidente: [
+    { id: "arbol_caido",  label: "Árbol caído",       em: "🌳" },
+    { id: "via_bloqueada", label: "Vía / puente dañado", em: "🚧" },
+    { id: "incendio",     label: "Incendio",          em: "🔥" },
+    { id: "inundacion",   label: "Inundación",        em: "🌊" },
+    { id: "derrumbe",     label: "Derrumbe",          em: "⛰️" },
+    { id: "otro",         label: "Otro",              em: "❗" },
+  ],
+};
+
+const CATEGORIA_LABEL = { luz: "Luz eléctrica", agua: "Agua", incidente: "Incidencia" };
+const CATEGORIA_EM = { luz: "💡", agua: "🚰", incidente: "⚠️" };
+
+// ---- Datos de ejemplo (solo se usan en modo demostración) -----------------
+function datosDemo() {
+  const ahora = Date.now();
+  const min = (n) => new Date(ahora - n * 60000).toISOString();
+  return [
+    { id: "d1", categoria: "luz", subtipo: "corte", zona: "Catedral", severidad: null, nota: "Desde las 2pm en el centro", created_at: min(35) },
+    { id: "d2", categoria: "agua", subtipo: "corte", zona: "Tamaca", severidad: null, nota: "", created_at: min(140) },
+    { id: "d3", categoria: "incidente", subtipo: "arbol_caido", zona: "Unión", severidad: "moderada", nota: "Bloquea un carril", created_at: min(50) },
+    { id: "d4", categoria: "luz", subtipo: "restablecido", zona: "Santa Rosa", severidad: null, nota: "", created_at: min(20) },
+    { id: "d5", categoria: "agua", subtipo: "intermitente", zona: "Concepción", severidad: null, nota: "", created_at: min(200) },
+    { id: "d6", categoria: "incidente", subtipo: "via_bloqueada", zona: "Juárez", severidad: "grave", nota: "Hueco grande cerca del semáforo", created_at: min(400) },
+  ];
+}
+
+// ---- Estado -----------------------------------------------------------
+let supabase = null;
+let reportes = [];
+let filtroActual = "todos";
+let categoriaSel = null;
+let map, markersLayer;
+const LS_CACHE_KEY = "altanto_cache_reportes";
+const LS_COOLDOWN_PREFIX = "altanto_cooldown_";
+
+if (!DEMO_MODE && window.supabase) {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// ---- Utilidades ---------------------------------------------------------
+function haceTiempo(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 1) return "justo ahora";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} d`;
+}
+
+function estadoTexto(r) {
+  const grupo = SUBTIPOS[r.categoria] || [];
+  const found = grupo.find((s) => s.id === r.subtipo);
+  return found ? found.label : r.subtipo;
+}
+
+async function cargarReportes() {
+  if (DEMO_MODE) {
+    reportes = JSON.parse(localStorage.getItem("altanto_demo_reportes") || "null") || datosDemo();
+    render();
+    return;
+  }
+  try {
+    const desde = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from("reports")
+      .select("*")
+      .gte("created_at", desde)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    reportes = data.map((r) => ({ ...r, zona: r.zona }));
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({ ts: Date.now(), reportes }));
+    document.getElementById("offlineBanner").hidden = true;
+    render();
+  } catch (err) {
+    const cache = JSON.parse(localStorage.getItem(LS_CACHE_KEY) || "null");
+    if (cache) {
+      reportes = cache.reportes;
+      document.getElementById("offlineText").textContent =
+        `Sin conexión — mostrando información de ${haceTiempo(new Date(cache.ts).toISOString())}.`;
+      document.getElementById("offlineBanner").hidden = false;
+      render();
+    } else {
+      document.getElementById("feedList").innerHTML =
+        '<div class="empty">No se pudo cargar información. Verifica tu conexión.</div>';
+    }
+  }
+}
+
+function zonaAgregado(nombreZona) {
+  const rs = reportes.filter((r) => r.zona === nombreZona);
+  const ultimo = (cat) =>
+    rs.filter((r) => r.categoria === cat).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+  const incidentesActivos = rs.filter(
+    (r) => r.categoria === "incidente" && Date.now() - new Date(r.created_at).getTime() < 12 * 3600 * 1000
+  );
+  return { luz: ultimo("luz"), agua: ultimo("agua"), incidentes: incidentesActivos };
+}
+
+function colorParaZona(agg, filtro) {
+  const GRIS = "#9AA0AC";
+  if (filtro === "luz") {
+    if (!agg.luz) return GRIS;
+    return agg.luz.subtipo === "corte" ? getVar("--accent-luz") : getVar("--ok");
+  }
+  if (filtro === "agua") {
+    if (!agg.agua) return GRIS;
+    return agg.agua.subtipo === "corte" ? getVar("--accent-agua") : getVar("--ok");
+  }
+  if (filtro === "incidente") {
+    return agg.incidentes.length ? getVar("--accent-incidente") : GRIS;
+  }
+  // "todos": prioridad incidencia > corte de luz > corte de agua > todo bien > sin datos
+  if (agg.incidentes.length) return getVar("--accent-incidente");
+  if (agg.luz && agg.luz.subtipo === "corte") return getVar("--accent-luz");
+  if (agg.agua && agg.agua.subtipo === "corte") return getVar("--accent-agua");
+  if (agg.luz || agg.agua) return getVar("--ok");
+  return GRIS;
+}
+
+function getVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#999";
+}
+
+// ---- Mapa ---------------------------------------------------------------
+function initMap() {
+  map = L.map("map", { zoomControl: true }).setView([10.0678, -69.3474], 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+  markersLayer = L.layerGroup().addTo(map);
+}
+
+function popupHtml(zona, agg) {
+  const linea = (label, r) =>
+    r ? `<div class="line"><strong>${label}:</strong> ${estadoTexto(r)} · ${haceTiempo(r.created_at)}</div>` : `<div class="line" style="opacity:.6">${label}: sin reportes</div>`;
+  const incidentesHtml = agg.incidentes.length
+    ? agg.incidentes.map((i) => `<div class="line">⚠️ ${estadoTexto(i)} (${i.severidad || "s/d"}) · ${haceTiempo(i.created_at)}</div>`).join("")
+    : "";
+  return `<div class="popup"><h3>${zona}</h3>${linea("💡 Luz", agg.luz)}${linea("🚰 Agua", agg.agua)}${incidentesHtml}</div>`;
+}
+
+function renderMap() {
+  if (!markersLayer) return;
+  markersLayer.clearLayers();
+  ZONAS.forEach((z) => {
+    const agg = zonaAgregado(z.nombre);
+    const color = colorParaZona(agg, filtroActual);
+    const marker = L.circleMarker([z.lat, z.lng], {
+      radius: 12,
+      color: "#ffffffaa",
+      weight: 2,
+      fillColor: color,
+      fillOpacity: 0.9,
+    }).bindPopup(popupHtml(z.nombre, agg));
+    marker.addTo(markersLayer);
+  });
+}
+
+// ---- Feed -----------------------------------------------------------------
+function render() {
+  renderMap();
+  const lista = document.getElementById("feedList");
+  const filtrados = reportes
+    .filter((r) => filtroActual === "todos" || r.categoria === filtroActual)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  if (!filtrados.length) {
+    lista.innerHTML = '<div class="empty">Todavía no hay reportes en esta categoría. ¡Sé el primero!</div>';
+    return;
+  }
+
+  lista.innerHTML = filtrados
+    .slice(0, 60)
+    .map((r) => {
+      const sev = r.severidad ? ` · severidad ${r.severidad}` : "";
+      const nota = r.nota ? `<div class="nota">"${escapeHtml(r.nota)}"</div>` : "";
+      return `
+        <div class="report-row">
+          <div class="badge ${r.categoria}">${CATEGORIA_EM[r.categoria]}</div>
+          <div>
+            <div class="zona">${escapeHtml(r.zona)}</div>
+            <div class="estado">${estadoTexto(r)}${sev}</div>
+            ${nota}
+            <div class="meta mono">${haceTiempo(r.created_at)}</div>
+          </div>
+        </div>`;
+    })
+    .join("");
+}
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ---- Filtros ---------------------------------------------------------------
+document.querySelectorAll(".tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-pressed", "false"));
+    btn.setAttribute("aria-pressed", "true");
+    filtroActual = btn.dataset.filter;
+    render();
+  });
+});
+
+// ---- Flujo de reporte -------------------------------------------------------
+const sheetBackdrop = document.getElementById("sheetBackdrop");
+const stepCategoria = document.getElementById("stepCategoria");
+const reportForm = document.getElementById("reportForm");
+const zonaSelect = document.getElementById("zonaSelect");
+const notaInput = document.getElementById("notaInput");
+const submitBtn = document.getElementById("submitBtn");
+
+zonaSelect.innerHTML = '<option value="">Selecciona tu parroquia…</option>' +
+  ZONAS.map((z) => `<option value="${z.nombre}">${z.nombre}</option>`).join("");
+
+function abrirSheet() {
+  categoriaSel = null;
+  stepCategoria.hidden = false;
+  reportForm.hidden = true;
+  document.querySelectorAll(".choice-card[data-categoria]").forEach((c) => c.setAttribute("aria-pressed", "false"));
+  sheetBackdrop.hidden = false;
+}
+function cerrarSheet() {
+  sheetBackdrop.hidden = true;
+  reportForm.reset();
+  document.getElementById("charCount").textContent = "0";
+  submitBtn.disabled = true;
+}
+
+document.getElementById("reportBtn").addEventListener("click", abrirSheet);
+document.getElementById("cancelBtn1").addEventListener("click", cerrarSheet);
+document.getElementById("cancelBtn2").addEventListener("click", () => {
+  reportForm.hidden = true;
+  stepCategoria.hidden = false;
+});
+sheetBackdrop.addEventListener("click", (e) => { if (e.target === sheetBackdrop) cerrarSheet(); });
+
+let subtipoSel = null;
+
+document.querySelectorAll(".choice-card[data-categoria]").forEach((card) => {
+  card.addEventListener("click", () => {
+    categoriaSel = card.dataset.categoria;
+    subtipoSel = null;
+    mostrarFormulario();
+  });
+});
+
+function mostrarFormulario() {
+  stepCategoria.hidden = true;
+  reportForm.hidden = false;
+  document.getElementById("formTitle").textContent = `${CATEGORIA_EM[categoriaSel]} ${CATEGORIA_LABEL[categoriaSel]}`;
+  document.getElementById("formSub").textContent = "Elige lo que estás viendo en tu zona";
+  document.getElementById("disclaimerBox").hidden = categoriaSel !== "incidente";
+
+  const grid = document.getElementById("subtipoGrid");
+  grid.className = "choice-grid " + (categoriaSel === "incidente" ? "two" : "two");
+  grid.innerHTML = SUBTIPOS[categoriaSel]
+    .map((s) => `<div class="choice-card ${categoriaSel}" data-subtipo="${s.id}" style="color:var(--accent-${categoriaSel})"><span class="em">${s.em}</span>${s.label}</div>`)
+    .join("");
+
+  grid.querySelectorAll(".choice-card").forEach((c) => {
+    c.addEventListener("click", () => {
+      grid.querySelectorAll(".choice-card").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      c.setAttribute("aria-pressed", "true");
+      subtipoSel = c.dataset.subtipo;
+      validar();
+    });
+  });
+  validar();
+}
+
+zonaSelect.addEventListener("change", validar);
+notaInput.addEventListener("input", () => {
+  document.getElementById("charCount").textContent = String(notaInput.value.length);
+});
+
+function validar() {
+  submitBtn.disabled = !(subtipoSel && zonaSelect.value);
+}
+
+function enFrio(clave) {
+  const t = localStorage.getItem(LS_COOLDOWN_PREFIX + clave);
+  return t && Date.now() - Number(t) < 3 * 60 * 1000;
+}
+function marcarFrio(clave) {
+  localStorage.setItem(LS_COOLDOWN_PREFIX + clave, String(Date.now()));
+}
+
+reportForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const zona = zonaSelect.value;
+  const clave = `${categoriaSel}_${zona}_${subtipoSel}`;
+  if (enFrio(clave)) {
+    mostrarToast("Ya enviaste este mismo reporte hace poco. ¡Gracias por tu atención!");
+    cerrarSheet();
+    return;
+  }
+
+  const nuevo = {
+    categoria: categoriaSel,
+    subtipo: subtipoSel,
+    zona,
+    severidad: categoriaSel === "incidente" ? (subtipoSel === "incendio" || subtipoSel === "derrumbe" ? "grave" : "moderada") : null,
+    nota: notaInput.value.trim() || null,
+  };
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Enviando…";
+
+  try {
+    if (DEMO_MODE) {
+      const r = { ...nuevo, id: "d" + Date.now(), created_at: new Date().toISOString() };
+      reportes.unshift(r);
+      localStorage.setItem("altanto_demo_reportes", JSON.stringify(reportes));
+    } else {
+      const { error } = await supabase.from("reports").insert(nuevo);
+      if (error) throw error;
+      await cargarReportes();
+    }
+    marcarFrio(clave);
+    mostrarToast("¡Gracias! Tu reporte ya está en el mapa.");
+    render();
+    cerrarSheet();
+  } catch (err) {
+    mostrarToast("No se pudo enviar. Revisa tu conexión e intenta de nuevo.");
+    submitBtn.disabled = false;
+  } finally {
+    submitBtn.textContent = "Enviar reporte";
+  }
+});
+
+function mostrarToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+// ---- Acerca de --------------------------------------------------------
+document.getElementById("infoBtn").addEventListener("click", () => { document.getElementById("aboutBackdrop").hidden = false; });
+document.getElementById("closeAboutBtn").addEventListener("click", () => { document.getElementById("aboutBackdrop").hidden = true; });
+document.getElementById("aboutBackdrop").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("aboutBackdrop")) document.getElementById("aboutBackdrop").hidden = true;
+});
+
+// ---- Arranque -----------------------------------------------------------
+document.getElementById("demoBanner").hidden = !DEMO_MODE;
+initMap();
+cargarReportes();
+if (!DEMO_MODE) setInterval(cargarReportes, 30000);
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

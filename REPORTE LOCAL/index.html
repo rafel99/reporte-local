@@ -29,6 +29,10 @@
     --accent-agua-soft: #D8EEEC;
     --accent-incidente: #C43E1C;
     --accent-incidente-soft: #F6DCD3;
+    --accent-internet: #2A5DAB;
+    --accent-internet-soft: #DCE6F6;
+    --accent-seguridad: #7A4FA0;
+    --accent-seguridad-soft: #EBE0F3;
     --ok: #3F7D45;
     --ok-soft: #DCEFDD;
     --shadow: 0 8px 24px -12px rgba(32,29,23,0.28);
@@ -50,6 +54,10 @@
       --accent-agua-soft: #123230;
       --accent-incidente: #F0684A;
       --accent-incidente-soft: #3A1A12;
+      --accent-internet: #6C9EE8;
+      --accent-internet-soft: #16233A;
+      --accent-seguridad: #B48FDE;
+      --accent-seguridad-soft: #2A2038;
       --ok: #6FCB77;
       --ok-soft: #16301A;
       --shadow: 0 8px 28px -12px rgba(0,0,0,0.55);
@@ -68,6 +76,10 @@
     --accent-agua-soft: #123230;
     --accent-incidente: #F0684A;
     --accent-incidente-soft: #3A1A12;
+    --accent-internet: #6C9EE8;
+    --accent-internet-soft: #16233A;
+    --accent-seguridad: #B48FDE;
+    --accent-seguridad-soft: #2A2038;
     --ok: #6FCB77;
     --ok-soft: #16301A;
     --shadow: 0 8px 28px -12px rgba(0,0,0,0.55);
@@ -138,6 +150,8 @@
   .dot.luz{ background: var(--accent-luz); }
   .dot.agua{ background: var(--accent-agua); }
   .dot.incidente{ background: var(--accent-incidente); }
+  .dot.internet{ background: var(--accent-internet); }
+  .dot.seguridad{ background: var(--accent-seguridad); }
 
   .layout{
     display:grid; grid-template-columns: 1fr; gap: 16px; padding: 0 16px;
@@ -170,6 +184,9 @@
   .report-row .badge.luz{ background: var(--accent-luz-soft); color: var(--accent-luz); }
   .report-row .badge.agua{ background: var(--accent-agua-soft); color: var(--accent-agua); }
   .report-row .badge.incidente{ background: var(--accent-incidente-soft); color: var(--accent-incidente); }
+  .report-row .badge.internet{ background: var(--accent-internet-soft); color: var(--accent-internet); }
+  .report-row .badge.desaparecido,
+  .report-row .badge.vehiculo_robado{ background: var(--accent-seguridad-soft); color: var(--accent-seguridad); }
   .report-row .zona{ font-weight:600; font-size:0.9rem; }
   .report-row .estado{ font-size: 0.84rem; color: var(--text); }
   .report-row .meta{ font-size: 0.74rem; color: var(--text-muted); margin-top:2px; }
@@ -205,12 +222,22 @@
     color: var(--text);
   }
   .choice-card .em{ display:block; font-size: 1.4rem; margin-bottom: 4px; }
+
+  .avatar-grid{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 6px; }
+  .avatar-opt{
+    width:40px; height:40px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+    font-size:1.15rem; border:1.5px solid var(--border); background: var(--surface-2); cursor:pointer;
+  }
+  .avatar-opt[aria-pressed="true"]{ border-color: var(--accent-agua); background: var(--accent-agua-soft); }
   .choice-card[aria-pressed="true"]{ border-color: currentColor; background: var(--accent-luz-soft); }
   .choice-card.agua[aria-pressed="true"]{ background: var(--accent-agua-soft); }
   .choice-card.incidente[aria-pressed="true"]{ background: var(--accent-incidente-soft); }
+  .choice-card.internet[aria-pressed="true"]{ background: var(--accent-internet-soft); }
+  .choice-card.desaparecido[aria-pressed="true"],
+  .choice-card.vehiculo_robado[aria-pressed="true"]{ background: var(--accent-seguridad-soft); }
 
   label.field{ display:block; font-size: 0.8rem; font-weight:600; margin: 12px 0 6px; }
-  select, textarea{
+  select, textarea, input[type="text"]{
     width:100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px;
     font-family: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text);
   }
@@ -222,6 +249,8 @@
     padding: 10px 12px; font-size: 0.78rem; margin: 14px 0; line-height:1.4;
   }
   .disclaimer strong{ color: var(--accent-incidente); }
+  .disclaimer.seguridad{ background: var(--accent-seguridad-soft); }
+  .disclaimer.seguridad strong{ color: var(--accent-seguridad); }
 
   .sheet-actions{ display:flex; gap:10px; margin-top: 16px; }
   .btn{
@@ -279,7 +308,9 @@
     <button class="tab" data-filter="todos" aria-pressed="true">Todos</button>
     <button class="tab" data-filter="luz" aria-pressed="false"><span class="dot luz"></span>Luz</button>
     <button class="tab" data-filter="agua" aria-pressed="false"><span class="dot agua"></span>Agua</button>
+    <button class="tab" data-filter="internet" aria-pressed="false"><span class="dot internet"></span>Internet</button>
     <button class="tab" data-filter="incidente" aria-pressed="false"><span class="dot incidente"></span>Incidencias</button>
+    <button class="tab" data-filter="seguridad" aria-pressed="false"><span class="dot seguridad"></span>Seguridad</button>
   </div>
 
   <div class="layout">
@@ -311,7 +342,10 @@
       <div class="choice-grid one">
         <div class="choice-card" data-categoria="luz" style="color:var(--accent-luz)"><span class="em">💡</span>Luz eléctrica</div>
         <div class="choice-card agua" data-categoria="agua" style="color:var(--accent-agua)"><span class="em">🚰</span>Agua</div>
-        <div class="choice-card incidente" data-categoria="incidente" style="color:var(--accent-incidente)"><span class="em">⚠️</span>Incidencia (árbol, vía, incendio...)</div>
+        <div class="choice-card internet" data-categoria="internet" style="color:var(--accent-internet)"><span class="em">📡</span>Internet</div>
+        <div class="choice-card incidente" data-categoria="incidente" style="color:var(--accent-incidente)"><span class="em">⚠️</span>Incidencia (árbol, vía, accidente, incendio...)</div>
+        <div class="choice-card desaparecido" data-categoria="desaparecido" style="color:var(--accent-seguridad)"><span class="em">🧍</span>Persona desaparecida</div>
+        <div class="choice-card vehiculo_robado" data-categoria="vehiculo_robado" style="color:var(--accent-seguridad)"><span class="em">🚗</span>Vehículo robado</div>
       </div>
       <div class="sheet-actions">
         <button class="btn" id="cancelBtn1">Cancelar</button>
@@ -327,6 +361,12 @@
       <div id="disclaimerBox" class="disclaimer" hidden>
         <strong>Esto no es una línea de emergencia.</strong> Si hay peligro real para vidas o bienes, llama al <strong>171</strong> (Servicio de Emergencias de Lara), a Protección Civil (166) o a Bomberos (167).
       </div>
+      <div id="disclaimerSeguridad" class="disclaimer seguridad" hidden>
+        <strong>Este reporte es anónimo y sin verificar — no sustituye una denuncia oficial.</strong>
+        No incluyas placas completas, direcciones exactas ni fotos; describe solo lo esencial.
+        Si hay riesgo de violencia o la persona podría estar huyendo de una situación de peligro,
+        contacta directamente a las autoridades (171 / 166 / 167) en vez de publicar su ubicación aquí.
+      </div>
 
       <label class="field" for="zonaSelect">Parroquia</label>
       <select id="zonaSelect" required></select>
@@ -334,6 +374,12 @@
       <label class="field" for="notaInput">Nota (opcional)</label>
       <textarea id="notaInput" maxlength="140" placeholder="Ej: desde hace 3 horas, cerca de la plaza..."></textarea>
       <div class="char-count"><span id="charCount">0</span>/140</div>
+
+      <label class="field" for="apodoInput">Tu nombre o apodo (opcional)</label>
+      <input id="apodoInput" type="text" maxlength="40" placeholder="Ej: Vecino de Santa Rosa (déjalo vacío para reportar anónimo)">
+
+      <label class="field">Tu ícono (opcional)</label>
+      <div id="avatarGrid" class="avatar-grid"></div>
 
       <div class="sheet-actions">
         <button type="button" class="btn" id="cancelBtn2">Atrás</button>
@@ -404,18 +450,41 @@ const SUBTIPOS = {
     { id: "intermitente", label: "Poca presión", em: "🔀" },
     { id: "restablecido", label: "Volvió el agua", em: "✅" },
   ],
+  internet: [
+    { id: "corte",       label: "Sin servicio", em: "📡" },
+    { id: "intermitente", label: "Intermitente", em: "🔀" },
+    { id: "restablecido", label: "Volvió el internet", em: "✅" },
+  ],
   incidente: [
     { id: "arbol_caido",  label: "Árbol caído",       em: "🌳" },
     { id: "via_bloqueada", label: "Vía / puente dañado", em: "🚧" },
+    { id: "accidente_transito", label: "Accidente de tránsito", em: "🚑" },
+    { id: "protesta_via", label: "Protesta / vía tomada", em: "✊" },
     { id: "incendio",     label: "Incendio",          em: "🔥" },
     { id: "inundacion",   label: "Inundación",        em: "🌊" },
     { id: "derrumbe",     label: "Derrumbe",          em: "⛰️" },
     { id: "otro",         label: "Otro",              em: "❗" },
   ],
+  desaparecido: [
+    { id: "reporte", label: "Reporte de persona desaparecida", em: "🧍" },
+  ],
+  vehiculo_robado: [
+    { id: "carro", label: "Carro",         em: "🚗" },
+    { id: "moto",  label: "Moto",          em: "🏍️" },
+    { id: "otro",  label: "Otro vehículo", em: "🚛" },
+  ],
 };
 
-const CATEGORIA_LABEL = { luz: "Luz eléctrica", agua: "Agua", incidente: "Incidencia" };
-const CATEGORIA_EM = { luz: "💡", agua: "🚰", incidente: "⚠️" };
+const CATEGORIA_LABEL = {
+  luz: "Luz eléctrica", agua: "Agua", internet: "Internet", incidente: "Incidencia",
+  desaparecido: "Persona desaparecida", vehiculo_robado: "Vehículo robado",
+};
+const CATEGORIA_EM = {
+  luz: "💡", agua: "🚰", internet: "📡", incidente: "⚠️",
+  desaparecido: "🧍", vehiculo_robado: "🚗",
+};
+// Categorías "sensibles": mismo grupo/pestaña "Seguridad", con precauciones extra en el formulario.
+const SEGURIDAD_CATEGORIAS = ["desaparecido", "vehiculo_robado"];
 
 // ---- Datos de ejemplo (solo se usan en modo demostración) -----------------
 function datosDemo() {
@@ -428,6 +497,9 @@ function datosDemo() {
     { id: "d4", categoria: "luz", subtipo: "restablecido", zona: "Santa Rosa", severidad: null, nota: "", created_at: min(20) },
     { id: "d5", categoria: "agua", subtipo: "intermitente", zona: "Concepción", severidad: null, nota: "", created_at: min(200) },
     { id: "d6", categoria: "incidente", subtipo: "via_bloqueada", zona: "Juárez", severidad: "grave", nota: "Hueco grande cerca del semáforo", created_at: min(400) },
+    { id: "d7", categoria: "internet", subtipo: "corte", zona: "Buena Vista", severidad: null, nota: "", apodo: null, created_at: min(60) },
+    { id: "d8", categoria: "incidente", subtipo: "accidente_transito", zona: "Concepción", severidad: "moderada", nota: "En la Av. Libertador, tránsito lento", apodo: null, created_at: min(90) },
+    { id: "d9", categoria: "vehiculo_robado", subtipo: "moto", zona: "Catedral", severidad: null, nota: "Moto negra, cerca del mercado", apodo: "Vecino de Catedral", created_at: min(150) },
   ];
 }
 
@@ -503,7 +575,16 @@ function zonaAgregado(nombreZona) {
   const incidentesActivos = rs.filter(
     (r) => r.categoria === "incidente" && Date.now() - new Date(r.created_at).getTime() < 12 * 3600 * 1000
   );
-  return { luz: ultimo("luz"), agua: ultimo("agua"), incidentes: incidentesActivos };
+  const seguridadActivos = rs.filter(
+    (r) => SEGURIDAD_CATEGORIAS.includes(r.categoria) && Date.now() - new Date(r.created_at).getTime() < 24 * 3600 * 1000
+  );
+  return {
+    luz: ultimo("luz"),
+    agua: ultimo("agua"),
+    internet: ultimo("internet"),
+    incidentes: incidentesActivos,
+    seguridad: seguridadActivos,
+  };
 }
 
 function colorParaZona(agg, filtro) {
@@ -516,14 +597,23 @@ function colorParaZona(agg, filtro) {
     if (!agg.agua) return GRIS;
     return agg.agua.subtipo === "corte" ? getVar("--accent-agua") : getVar("--ok");
   }
+  if (filtro === "internet") {
+    if (!agg.internet) return GRIS;
+    return agg.internet.subtipo === "corte" ? getVar("--accent-internet") : getVar("--ok");
+  }
   if (filtro === "incidente") {
     return agg.incidentes.length ? getVar("--accent-incidente") : GRIS;
   }
-  // "todos": prioridad incidencia > corte de luz > corte de agua > todo bien > sin datos
+  if (filtro === "seguridad") {
+    return agg.seguridad.length ? getVar("--accent-seguridad") : GRIS;
+  }
+  // "todos": prioridad incidencia > seguridad > cortes de servicio > todo bien > sin datos
   if (agg.incidentes.length) return getVar("--accent-incidente");
+  if (agg.seguridad.length) return getVar("--accent-seguridad");
   if (agg.luz && agg.luz.subtipo === "corte") return getVar("--accent-luz");
   if (agg.agua && agg.agua.subtipo === "corte") return getVar("--accent-agua");
-  if (agg.luz || agg.agua) return getVar("--ok");
+  if (agg.internet && agg.internet.subtipo === "corte") return getVar("--accent-internet");
+  if (agg.luz || agg.agua || agg.internet) return getVar("--ok");
   return GRIS;
 }
 
@@ -547,7 +637,10 @@ function popupHtml(zona, agg) {
   const incidentesHtml = agg.incidentes.length
     ? agg.incidentes.map((i) => `<div class="line">⚠️ ${estadoTexto(i)} (${i.severidad || "s/d"}) · ${haceTiempo(i.created_at)}</div>`).join("")
     : "";
-  return `<div class="popup"><h3>${zona}</h3>${linea("💡 Luz", agg.luz)}${linea("🚰 Agua", agg.agua)}${incidentesHtml}</div>`;
+  const seguridadHtml = agg.seguridad.length
+    ? agg.seguridad.map((s) => `<div class="line">${avatarOr(s, "🧭")} ${CATEGORIA_LABEL[s.categoria]}: ${estadoTexto(s)} · ${haceTiempo(s.created_at)}</div>`).join("")
+    : "";
+  return `<div class="popup"><h3>${zona}</h3>${linea("💡 Luz", agg.luz)}${linea("🚰 Agua", agg.agua)}${linea("📡 Internet", agg.internet)}${incidentesHtml}${seguridadHtml}</div>`;
 }
 
 function renderMap() {
@@ -568,11 +661,21 @@ function renderMap() {
 }
 
 // ---- Feed -----------------------------------------------------------------
+function coincideFiltro(r) {
+  if (filtroActual === "todos") return true;
+  if (filtroActual === "seguridad") return SEGURIDAD_CATEGORIAS.includes(r.categoria);
+  return r.categoria === filtroActual;
+}
+
+function avatarOr(r, fallback) {
+  return r && r.avatar ? r.avatar : fallback;
+}
+
 function render() {
   renderMap();
   const lista = document.getElementById("feedList");
   const filtrados = reportes
-    .filter((r) => filtroActual === "todos" || r.categoria === filtroActual)
+    .filter(coincideFiltro)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   if (!filtrados.length) {
@@ -585,6 +688,7 @@ function render() {
     .map((r) => {
       const sev = r.severidad ? ` · severidad ${r.severidad}` : "";
       const nota = r.nota ? `<div class="nota">"${escapeHtml(r.nota)}"</div>` : "";
+      const quien = r.apodo ? `${avatarOr(r, "🙂")} ${escapeHtml(r.apodo)}` : "Anónimo";
       return `
         <div class="report-row">
           <div class="badge ${r.categoria}">${CATEGORIA_EM[r.categoria]}</div>
@@ -592,7 +696,7 @@ function render() {
             <div class="zona">${escapeHtml(r.zona)}</div>
             <div class="estado">${estadoTexto(r)}${sev}</div>
             ${nota}
-            <div class="meta mono">${haceTiempo(r.created_at)}</div>
+            <div class="meta mono">${haceTiempo(r.created_at)} · ${quien}</div>
           </div>
         </div>`;
     })
@@ -624,6 +728,25 @@ const submitBtn = document.getElementById("submitBtn");
 zonaSelect.innerHTML = '<option value="">Selecciona tu parroquia…</option>' +
   ZONAS.map((z) => `<option value="${z.nombre}">${z.nombre}</option>`).join("");
 
+// Íconos genéricos para acompañar el apodo — nunca fotos reales, solo para
+// darle un poco de identidad visual al reporte sin comprometer el anonimato.
+const AVATARES = ["🦊", "🐱", "🐢", "🦉", "🐦", "🌵", "⭐", "🌙", "☀️", "🍃"];
+let avatarSel = null;
+const avatarGrid = document.getElementById("avatarGrid");
+avatarGrid.innerHTML = AVATARES.map((a) => `<div class="avatar-opt" data-avatar="${a}" aria-pressed="false">${a}</div>`).join("");
+avatarGrid.querySelectorAll(".avatar-opt").forEach((el) => {
+  el.addEventListener("click", () => {
+    const yaSeleccionado = el.getAttribute("aria-pressed") === "true";
+    avatarGrid.querySelectorAll(".avatar-opt").forEach((x) => x.setAttribute("aria-pressed", "false"));
+    avatarSel = yaSeleccionado ? null : el.dataset.avatar;
+    if (!yaSeleccionado) el.setAttribute("aria-pressed", "true");
+  });
+});
+
+function accentKey(cat) {
+  return SEGURIDAD_CATEGORIAS.includes(cat) ? "seguridad" : cat;
+}
+
 function abrirSheet() {
   categoriaSel = null;
   stepCategoria.hidden = false;
@@ -636,6 +759,8 @@ function cerrarSheet() {
   reportForm.reset();
   document.getElementById("charCount").textContent = "0";
   submitBtn.disabled = true;
+  avatarSel = null;
+  avatarGrid.querySelectorAll(".avatar-opt").forEach((x) => x.setAttribute("aria-pressed", "false"));
 }
 
 document.getElementById("reportBtn").addEventListener("click", abrirSheet);
@@ -662,11 +787,12 @@ function mostrarFormulario() {
   document.getElementById("formTitle").textContent = `${CATEGORIA_EM[categoriaSel]} ${CATEGORIA_LABEL[categoriaSel]}`;
   document.getElementById("formSub").textContent = "Elige lo que estás viendo en tu zona";
   document.getElementById("disclaimerBox").hidden = categoriaSel !== "incidente";
+  document.getElementById("disclaimerSeguridad").hidden = !SEGURIDAD_CATEGORIAS.includes(categoriaSel);
 
   const grid = document.getElementById("subtipoGrid");
-  grid.className = "choice-grid " + (categoriaSel === "incidente" ? "two" : "two");
+  grid.className = "choice-grid two";
   grid.innerHTML = SUBTIPOS[categoriaSel]
-    .map((s) => `<div class="choice-card ${categoriaSel}" data-subtipo="${s.id}" style="color:var(--accent-${categoriaSel})"><span class="em">${s.em}</span>${s.label}</div>`)
+    .map((s) => `<div class="choice-card ${categoriaSel}" data-subtipo="${s.id}" style="color:var(--accent-${accentKey(categoriaSel)})"><span class="em">${s.em}</span>${s.label}</div>`)
     .join("");
 
   grid.querySelectorAll(".choice-card").forEach((c) => {
@@ -711,8 +837,12 @@ reportForm.addEventListener("submit", async (e) => {
     categoria: categoriaSel,
     subtipo: subtipoSel,
     zona,
-    severidad: categoriaSel === "incidente" ? (subtipoSel === "incendio" || subtipoSel === "derrumbe" ? "grave" : "moderada") : null,
+    severidad: categoriaSel === "incidente"
+      ? (["incendio", "derrumbe", "accidente_transito"].includes(subtipoSel) ? "grave" : "moderada")
+      : null,
     nota: notaInput.value.trim() || null,
+    apodo: document.getElementById("apodoInput").value.trim() || null,
+    avatar: avatarSel,
   };
 
   submitBtn.disabled = true;

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Al Tanto — Barquisimeto</title>
-<meta name="description" content="Mapa comunitario de luz, agua e incidencias en Barquisimeto, en tiempo real.">
+<title>Al Tanto — Venezuela</title>
+<meta name="description" content="Mapa comunitario de luz, agua, internet e incidencias en varias ciudades de Venezuela, en tiempo real.">
 <meta name="theme-color" content="#0B0F17">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -121,6 +121,12 @@
   .brand-mark svg{ width: 18px; height:18px; }
   .brand h1{ font-size: 1.28rem; font-weight: 600; line-height:1; }
   .brand p{ margin: 3px 0 0; font-size: 0.78rem; color: var(--text-muted); }
+  .city-picker{ display:flex; align-items:center; gap: 3px; margin-top: 2px; }
+  .city-picker span{ font-size: 0.78rem; }
+  .city-picker select{
+    border: none; background: transparent; color: var(--text-muted); font-family: inherit;
+    font-size: 0.78rem; font-weight: 600; padding: 0; cursor: pointer;
+  }
   .icon-btn{
     width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--border);
     background: var(--surface); color: var(--text); cursor:pointer;
@@ -287,7 +293,10 @@
       </div>
       <div>
         <h1>Al Tanto</h1>
-        <p>Barquisimeto, en tiempo real</p>
+        <div class="city-picker">
+          <span>📍</span>
+          <select id="ciudadSelect" aria-label="Elegir ciudad"></select>
+        </div>
       </div>
     </div>
     <button class="icon-btn" id="infoBtn" title="Acerca de esta app" aria-label="Acerca de esta app">
@@ -314,7 +323,7 @@
   </div>
 
   <div class="layout">
-    <div id="map" role="application" aria-label="Mapa de Barquisimeto con el estado reportado por parroquia"></div>
+    <div id="map" role="application" aria-label="Mapa con el estado reportado por parroquia"></div>
 
     <section class="feed">
       <h2>Reportes recientes</h2>
@@ -359,7 +368,7 @@
       <div id="subtipoGrid" class="choice-grid two"></div>
 
       <div id="disclaimerBox" class="disclaimer" hidden>
-        <strong>Esto no es una línea de emergencia.</strong> Si hay peligro real para vidas o bienes, llama al <strong>171</strong> (Servicio de Emergencias de Lara), a Protección Civil (166) o a Bomberos (167).
+        <strong>Esto no es una línea de emergencia.</strong> Si hay peligro real para vidas o bienes, llama al <strong>171</strong> (Sistema de Emergencias de tu estado, si está disponible), a Protección Civil (166) o a Bomberos (167).
       </div>
       <div id="disclaimerSeguridad" class="disclaimer seguridad" hidden>
         <strong>Este reporte es anónimo y sin verificar — no sustituye una denuncia oficial.</strong>
@@ -393,15 +402,16 @@
 <div class="sheet-backdrop" id="aboutBackdrop" hidden>
   <div class="sheet">
     <h2>Acerca de Al Tanto</h2>
-    <p class="step-sub" style="margin-bottom:10px;">Un mapa hecho por y para la comunidad de Barquisimeto.</p>
+    <p class="step-sub" style="margin-bottom:10px;">Un mapa hecho por y para varias comunidades de Venezuela.</p>
     <p style="font-size:0.85rem; line-height:1.5;">
-      Cada reporte lo envía una persona de tu zona, de forma anónima — no pedimos nombre, teléfono ni cuenta.
+      Cada reporte lo envía una persona de su zona, de forma anónima — no pedimos nombre, teléfono ni cuenta.
       Por eso la información es comunitaria y no oficial: dos vecinos pueden reportar cosas distintas de la misma parroquia,
       y por eso mostramos siempre la hora de cada reporte, para que decidas qué tan vigente está.
+      Puedes cambiar de ciudad con el selector 📍 junto al nombre de la app.
     </p>
     <div class="disclaimer" style="margin-top:14px;">
       <strong>En una emergencia real</strong> (incendio activo, estructura colapsada, personas heridas), no dependas de esta app:
-      llama al <strong>171</strong> (Emergencias Lara), Protección Civil (166) o Bomberos (167).
+      llama al <strong>171</strong> (Sistema de Emergencias de tu estado, si está disponible), Protección Civil (166) o Bomberos (167).
     </div>
     <div class="sheet-actions">
       <button class="btn primary" id="closeAboutBtn">Entendido</button>
@@ -424,20 +434,106 @@ const SUPABASE_ANON_KEY = "sb_publishable_njAh9COS-E1glqV-KSqMSQ_eGMLoSIQ";
 
 const DEMO_MODE = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 
-// Zonas piloto: parroquias del municipio Iribarren (Barquisimeto).
-// Coordenadas aproximadas para ubicar el marcador — ajústalas si tienes
-// datos más precisos de los límites parroquiales reales.
-const ZONAS = [
-  { id: "catedral",        nombre: "Catedral",                 lat: 10.0678, lng: -69.3474 },
-  { id: "concepcion",      nombre: "Concepción",                lat: 10.0733, lng: -69.3452 },
-  { id: "juan_de_villegas", nombre: "Juan de Villegas (Ana Soto)", lat: 10.0611, lng: -69.3612 },
-  { id: "santa_rosa",      nombre: "Santa Rosa",                lat: 10.0231, lng: -69.3689 },
-  { id: "union",           nombre: "Unión",                     lat: 10.0847, lng: -69.3178 },
-  { id: "tamaca",          nombre: "Tamaca",                    lat: 10.1206, lng: -69.3697 },
-  { id: "buena_vista",     nombre: "Buena Vista",               lat: 10.1042, lng: -69.3389 },
-  { id: "juarez",          nombre: "Juárez",                    lat: 10.0597, lng: -69.3122 },
-  { id: "felipe_alvarado", nombre: "Aguedo Felipe Alvarado",    lat: 10.0389, lng: -69.3286 },
+// Ciudades piloto y sus parroquias. Coordenadas aproximadas para ubicar el
+// marcador de cada parroquia — no son límites oficiales, ajústalas si tienes
+// datos más precisos. Para Maracaibo la confianza en la ubicación relativa
+// de cada parroquia es más baja que en las demás ciudades (nombres menos
+// conocidos externamente) — trátalas como una primera aproximación a revisar.
+const CIUDADES = [
+  {
+    id: "barquisimeto", nombre: "Barquisimeto", estado: "Lara", lat: 10.0678, lng: -69.3474, zoom: 12,
+    zonas: [
+      { id: "catedral",        nombre: "Catedral",                 lat: 10.0678, lng: -69.3474 },
+      { id: "concepcion",      nombre: "Concepción",                lat: 10.0733, lng: -69.3452 },
+      { id: "juan_de_villegas", nombre: "Juan de Villegas (Ana Soto)", lat: 10.0611, lng: -69.3612 },
+      { id: "santa_rosa",      nombre: "Santa Rosa",                lat: 10.0231, lng: -69.3689 },
+      { id: "union",           nombre: "Unión",                     lat: 10.0847, lng: -69.3178 },
+      { id: "tamaca",          nombre: "Tamaca",                    lat: 10.1206, lng: -69.3697 },
+      { id: "buena_vista",     nombre: "Buena Vista",               lat: 10.1042, lng: -69.3389 },
+      { id: "juarez",          nombre: "Juárez",                    lat: 10.0597, lng: -69.3122 },
+      { id: "felipe_alvarado", nombre: "Aguedo Felipe Alvarado",    lat: 10.0389, lng: -69.3286 },
+    ],
+  },
+  {
+    id: "caracas", nombre: "Caracas", estado: "Distrito Capital", lat: 10.4806, lng: -66.9036, zoom: 12,
+    zonas: [
+      { id: "catedral_ccs",   nombre: "Catedral",        lat: 10.5057, lng: -66.9146 },
+      { id: "altagracia",     nombre: "Altagracia",      lat: 10.5091, lng: -66.9107 },
+      { id: "candelaria_ccs", nombre: "La Candelaria",   lat: 10.5038, lng: -66.9068 },
+      { id: "santa_teresa",   nombre: "Santa Teresa",    lat: 10.5015, lng: -66.9127 },
+      { id: "san_juan",       nombre: "San Juan",        lat: 10.4995, lng: -66.9165 },
+      { id: "santa_rosalia",  nombre: "Santa Rosalía",   lat: 10.4928, lng: -66.9160 },
+      { id: "san_agustin",    nombre: "San Agustín",     lat: 10.4965, lng: -66.9075 },
+      { id: "el_valle",       nombre: "El Valle",        lat: 10.4703, lng: -66.9285 },
+      { id: "coche",          nombre: "Coche",           lat: 10.4650, lng: -66.9345 },
+      { id: "23_de_enero",    nombre: "23 de Enero",     lat: 10.5175, lng: -66.9260 },
+      { id: "sucre_catia",    nombre: "Sucre (Catia)",   lat: 10.5215, lng: -66.9425 },
+      { id: "la_pastora",     nombre: "La Pastora",      lat: 10.5165, lng: -66.9150 },
+      { id: "san_bernardino", nombre: "San Bernardino",  lat: 10.5145, lng: -66.9010 },
+      { id: "san_jose_ccs",   nombre: "San José",        lat: 10.5075, lng: -66.9010 },
+      { id: "el_recreo",      nombre: "El Recreo",       lat: 10.4970, lng: -66.8720 },
+      { id: "san_pedro",      nombre: "San Pedro",       lat: 10.4900, lng: -66.8880 },
+      { id: "el_paraiso",     nombre: "El Paraíso",      lat: 10.4920, lng: -66.9430 },
+      { id: "antimano",       nombre: "Antímano",        lat: 10.4830, lng: -66.9700 },
+      { id: "caricuao",       nombre: "Caricuao",        lat: 10.4460, lng: -66.9930 },
+      { id: "la_vega",        nombre: "La Vega",         lat: 10.4670, lng: -66.9540 },
+      { id: "el_junquito",    nombre: "El Junquito",     lat: 10.5500, lng: -67.0350 },
+      { id: "macarao",        nombre: "Macarao",         lat: 10.4600, lng: -67.0300 },
+    ],
+  },
+  {
+    id: "maracaibo", nombre: "Maracaibo", estado: "Zulia", lat: 10.6427, lng: -71.6125, zoom: 12,
+    zonas: [
+      { id: "bolivar_mcbo",     nombre: "Bolívar",                     lat: 10.6427, lng: -71.6127 },
+      { id: "cecilio_acosta",   nombre: "Cecilio Acosta",              lat: 10.6470, lng: -71.6200 },
+      { id: "chiquinquira",     nombre: "Chiquinquirá",                lat: 10.6500, lng: -71.6230 },
+      { id: "santa_lucia_mcbo", nombre: "Santa Lucía",                 lat: 10.6550, lng: -71.6280 },
+      { id: "olegario_villalobos", nombre: "Olegario Villalobos",      lat: 10.6600, lng: -71.6100 },
+      { id: "coquivacoa",       nombre: "Coquivacoa",                  lat: 10.6700, lng: -71.6050 },
+      { id: "raul_leoni",       nombre: "Raúl Leoni",                  lat: 10.6900, lng: -71.6000 },
+      { id: "cristo_de_aranza", nombre: "Cristo de Aranza",            lat: 10.6800, lng: -71.6400 },
+      { id: "idelfonzo_vasquez", nombre: "Idelfonzo Vásquez",          lat: 10.6350, lng: -71.6350 },
+      { id: "juana_de_avila",   nombre: "Juana de Ávila",              lat: 10.6250, lng: -71.6450 },
+      { id: "manuel_dagnino",   nombre: "Manuel Dagnino",              lat: 10.6300, lng: -71.6200 },
+      { id: "antonio_borjas_romero", nombre: "Antonio Borjas Romero",  lat: 10.6150, lng: -71.6550 },
+      { id: "carracciolo_parra_perez", nombre: "Carracciolo Parra Pérez", lat: 10.6100, lng: -71.6300 },
+      { id: "francisco_eugenio_bustamante", nombre: "Francisco Eugenio Bustamante", lat: 10.6200, lng: -71.6100 },
+      { id: "venancio_pulgar",  nombre: "Venancio Pulgar",             lat: 10.5900, lng: -71.6200 },
+      { id: "san_isidro_mcbo",  nombre: "San Isidro",                  lat: 10.5800, lng: -71.6000 },
+      { id: "cacique_mara",     nombre: "Cacique Mara",                lat: 10.6050, lng: -71.6150 },
+      { id: "luis_hurtado_higuera", nombre: "Luis Hurtado Higuera",    lat: 10.5950, lng: -71.6350 },
+    ],
+  },
+  {
+    id: "valencia", nombre: "Valencia", estado: "Carabobo", lat: 10.1620, lng: -68.0077, zoom: 12,
+    zonas: [
+      { id: "catedral_vlc",  nombre: "Catedral",         lat: 10.1620, lng: -68.0077 },
+      { id: "candelaria_vlc", nombre: "Candelaria",      lat: 10.1650, lng: -68.0040 },
+      { id: "miguel_pena",   nombre: "Miguel Peña",      lat: 10.1780, lng: -68.0280 },
+      { id: "rafael_urdaneta", nombre: "Rafael Urdaneta", lat: 10.1450, lng: -67.9950 },
+      { id: "san_jose_vlc",  nombre: "San José",         lat: 10.1850, lng: -68.0000 },
+      { id: "san_blas",      nombre: "San Blas",         lat: 10.1550, lng: -68.0150 },
+      { id: "santa_rosa_vlc", nombre: "Santa Rosa",      lat: 10.1300, lng: -68.0100 },
+      { id: "el_socorro",    nombre: "El Socorro",       lat: 10.1700, lng: -68.0200 },
+      { id: "negro_primero", nombre: "Negro Primero",    lat: 10.0900, lng: -67.9900 },
+    ],
+  },
+  {
+    id: "maracay", nombre: "Maracay", estado: "Aragua", lat: 10.2469, lng: -67.5959, zoom: 12,
+    zonas: [
+      { id: "joaquin_crespo",   nombre: "Joaquín Crespo",          lat: 10.2469, lng: -67.5959 },
+      { id: "madre_maria",      nombre: "Madre María de San José",  lat: 10.2550, lng: -67.5900 },
+      { id: "andres_eloy_blanco", nombre: "Andrés Eloy Blanco",     lat: 10.2600, lng: -67.6100 },
+      { id: "pedro_jose_ovalles", nombre: "Pedro José Ovalles",     lat: 10.2400, lng: -67.5850 },
+      { id: "el_limon",         nombre: "El Limón",                lat: 10.2850, lng: -67.6400 },
+      { id: "jose_casanova_godoy", nombre: "José Casanova Godoy",  lat: 10.2300, lng: -67.6050 },
+    ],
+  },
 ];
+
+function ciudadPorId(id) {
+  return CIUDADES.find((c) => c.id === id) || CIUDADES[0];
+}
 
 const SUBTIPOS = {
   luz: [
@@ -491,15 +587,20 @@ function datosDemo() {
   const ahora = Date.now();
   const min = (n) => new Date(ahora - n * 60000).toISOString();
   return [
-    { id: "d1", categoria: "luz", subtipo: "corte", zona: "Catedral", severidad: null, nota: "Desde las 2pm en el centro", created_at: min(35) },
-    { id: "d2", categoria: "agua", subtipo: "corte", zona: "Tamaca", severidad: null, nota: "", created_at: min(140) },
-    { id: "d3", categoria: "incidente", subtipo: "arbol_caido", zona: "Unión", severidad: "moderada", nota: "Bloquea un carril", created_at: min(50) },
-    { id: "d4", categoria: "luz", subtipo: "restablecido", zona: "Santa Rosa", severidad: null, nota: "", created_at: min(20) },
-    { id: "d5", categoria: "agua", subtipo: "intermitente", zona: "Concepción", severidad: null, nota: "", created_at: min(200) },
-    { id: "d6", categoria: "incidente", subtipo: "via_bloqueada", zona: "Juárez", severidad: "grave", nota: "Hueco grande cerca del semáforo", created_at: min(400) },
-    { id: "d7", categoria: "internet", subtipo: "corte", zona: "Buena Vista", severidad: null, nota: "", apodo: null, created_at: min(60) },
-    { id: "d8", categoria: "incidente", subtipo: "accidente_transito", zona: "Concepción", severidad: "moderada", nota: "En la Av. Libertador, tránsito lento", apodo: null, created_at: min(90) },
-    { id: "d9", categoria: "vehiculo_robado", subtipo: "moto", zona: "Catedral", severidad: null, nota: "Moto negra, cerca del mercado", apodo: "Vecino de Catedral", created_at: min(150) },
+    { id: "d1", ciudad: "barquisimeto", categoria: "luz", subtipo: "corte", zona: "Catedral", severidad: null, nota: "Desde las 2pm en el centro", created_at: min(35) },
+    { id: "d2", ciudad: "barquisimeto", categoria: "agua", subtipo: "corte", zona: "Tamaca", severidad: null, nota: "", created_at: min(140) },
+    { id: "d3", ciudad: "barquisimeto", categoria: "incidente", subtipo: "arbol_caido", zona: "Unión", severidad: "moderada", nota: "Bloquea un carril", created_at: min(50) },
+    { id: "d4", ciudad: "barquisimeto", categoria: "luz", subtipo: "restablecido", zona: "Santa Rosa", severidad: null, nota: "", created_at: min(20) },
+    { id: "d5", ciudad: "barquisimeto", categoria: "agua", subtipo: "intermitente", zona: "Concepción", severidad: null, nota: "", created_at: min(200) },
+    { id: "d6", ciudad: "barquisimeto", categoria: "incidente", subtipo: "via_bloqueada", zona: "Juárez", severidad: "grave", nota: "Hueco grande cerca del semáforo", created_at: min(400) },
+    { id: "d7", ciudad: "barquisimeto", categoria: "internet", subtipo: "corte", zona: "Buena Vista", severidad: null, nota: "", apodo: null, created_at: min(60) },
+    { id: "d8", ciudad: "barquisimeto", categoria: "incidente", subtipo: "accidente_transito", zona: "Concepción", severidad: "moderada", nota: "En la Av. Libertador, tránsito lento", apodo: null, created_at: min(90) },
+    { id: "d9", ciudad: "barquisimeto", categoria: "vehiculo_robado", subtipo: "moto", zona: "Catedral", severidad: null, nota: "Moto negra, cerca del mercado", apodo: "Vecino de Catedral", created_at: min(150) },
+    { id: "d10", ciudad: "caracas", categoria: "luz", subtipo: "corte", zona: "Sucre (Catia)", severidad: null, nota: "", created_at: min(45) },
+    { id: "d11", ciudad: "caracas", categoria: "incidente", subtipo: "protesta_via", zona: "23 de Enero", severidad: "moderada", nota: "Vía cerrada cerca de la autopista", created_at: min(70) },
+    { id: "d12", ciudad: "maracaibo", categoria: "agua", subtipo: "corte", zona: "Chiquinquirá", severidad: null, nota: "", created_at: min(90) },
+    { id: "d13", ciudad: "valencia", categoria: "internet", subtipo: "intermitente", zona: "San Blas", severidad: null, nota: "", created_at: min(110) },
+    { id: "d14", ciudad: "maracay", categoria: "luz", subtipo: "corte", zona: "Joaquín Crespo", severidad: null, nota: "Desde el mediodía", created_at: min(30) },
   ];
 }
 
@@ -511,6 +612,11 @@ let categoriaSel = null;
 let map, markersLayer;
 const LS_CACHE_KEY = "altanto_cache_reportes";
 const LS_COOLDOWN_PREFIX = "altanto_cooldown_";
+const LS_CIUDAD_KEY = "altanto_ciudad";
+
+let ciudadActualId = localStorage.getItem(LS_CIUDAD_KEY) || "barquisimeto";
+if (!CIUDADES.some((c) => c.id === ciudadActualId)) ciudadActualId = "barquisimeto";
+function ciudadActual() { return ciudadPorId(ciudadActualId); }
 
 if (!DEMO_MODE && window.supabase) {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -535,8 +641,10 @@ function estadoTexto(r) {
 }
 
 async function cargarReportes() {
+  const cacheKey = LS_CACHE_KEY + "_" + ciudadActualId;
   if (DEMO_MODE) {
-    reportes = JSON.parse(localStorage.getItem("altanto_demo_reportes") || "null") || datosDemo();
+    const todos = JSON.parse(localStorage.getItem("altanto_demo_reportes") || "null") || datosDemo();
+    reportes = todos.filter((r) => r.ciudad === ciudadActualId);
     render();
     return;
   }
@@ -545,16 +653,17 @@ async function cargarReportes() {
     const { data, error } = await supabaseClient
       .from("reports")
       .select("*")
+      .eq("ciudad", ciudadActualId)
       .gte("created_at", desde)
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw error;
     reportes = data.map((r) => ({ ...r, zona: r.zona }));
-    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({ ts: Date.now(), reportes }));
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), reportes }));
     document.getElementById("offlineBanner").hidden = true;
     render();
   } catch (err) {
-    const cache = JSON.parse(localStorage.getItem(LS_CACHE_KEY) || "null");
+    const cache = JSON.parse(localStorage.getItem(cacheKey) || "null");
     if (cache) {
       reportes = cache.reportes;
       document.getElementById("offlineText").textContent =
@@ -623,7 +732,8 @@ function getVar(name) {
 
 // ---- Mapa ---------------------------------------------------------------
 function initMap() {
-  map = L.map("map", { zoomControl: true }).setView([10.0678, -69.3474], 12);
+  const c = ciudadActual();
+  map = L.map("map", { zoomControl: true }).setView([c.lat, c.lng], c.zoom);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -646,7 +756,7 @@ function popupHtml(zona, agg) {
 function renderMap() {
   if (!markersLayer) return;
   markersLayer.clearLayers();
-  ZONAS.forEach((z) => {
+  ciudadActual().zonas.forEach((z) => {
     const agg = zonaAgregado(z.nombre);
     const color = colorParaZona(agg, filtroActual);
     const marker = L.circleMarker([z.lat, z.lng], {
@@ -725,8 +835,29 @@ const zonaSelect = document.getElementById("zonaSelect");
 const notaInput = document.getElementById("notaInput");
 const submitBtn = document.getElementById("submitBtn");
 
-zonaSelect.innerHTML = '<option value="">Selecciona tu parroquia…</option>' +
-  ZONAS.map((z) => `<option value="${z.nombre}">${z.nombre}</option>`).join("");
+function pintarZonaSelect() {
+  zonaSelect.innerHTML = '<option value="">Selecciona tu parroquia…</option>' +
+    ciudadActual().zonas.map((z) => `<option value="${z.nombre}">${z.nombre}</option>`).join("");
+}
+pintarZonaSelect();
+
+// ---- Selector de ciudad -----------------------------------------------
+const ciudadSelect = document.getElementById("ciudadSelect");
+ciudadSelect.innerHTML = CIUDADES.map((c) => `<option value="${c.id}">${c.nombre}</option>`).join("");
+ciudadSelect.value = ciudadActualId;
+
+function cambiarCiudad(id) {
+  ciudadActualId = id;
+  localStorage.setItem(LS_CIUDAD_KEY, id);
+  ciudadSelect.value = id;
+  document.title = `Al Tanto — ${ciudadActual().nombre}`;
+  pintarZonaSelect();
+  const c = ciudadActual();
+  if (map) map.setView([c.lat, c.lng], c.zoom);
+  cargarReportes();
+}
+
+ciudadSelect.addEventListener("change", () => cambiarCiudad(ciudadSelect.value));
 
 // Íconos genéricos para acompañar el apodo — nunca fotos reales, solo para
 // darle un poco de identidad visual al reporte sin comprometer el anonimato.
@@ -834,6 +965,7 @@ reportForm.addEventListener("submit", async (e) => {
   }
 
   const nuevo = {
+    ciudad: ciudadActualId,
     categoria: categoriaSel,
     subtipo: subtipoSel,
     zona,
@@ -851,8 +983,10 @@ reportForm.addEventListener("submit", async (e) => {
   try {
     if (DEMO_MODE) {
       const r = { ...nuevo, id: "d" + Date.now(), created_at: new Date().toISOString() };
-      reportes.unshift(r);
-      localStorage.setItem("altanto_demo_reportes", JSON.stringify(reportes));
+      const todos = JSON.parse(localStorage.getItem("altanto_demo_reportes") || "null") || datosDemo();
+      todos.unshift(r);
+      localStorage.setItem("altanto_demo_reportes", JSON.stringify(todos));
+      reportes = todos.filter((x) => x.ciudad === ciudadActualId);
     } else {
       const { error } = await supabaseClient.from("reports").insert(nuevo);
       if (error) throw error;

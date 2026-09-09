@@ -235,6 +235,15 @@
     font-size:1.15rem; border:1.5px solid var(--border); background: var(--surface-2); cursor:pointer;
   }
   .avatar-opt[aria-pressed="true"]{ border-color: var(--accent-agua); background: var(--accent-agua-soft); }
+
+  .chip-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 6px; }
+  .chip-toggle{
+    border: 1.5px solid var(--border); border-radius: 999px; padding: 7px 13px;
+    font-size: 0.8rem; font-weight: 600; cursor:pointer; background: var(--surface-2); color: var(--text);
+  }
+  .chip-toggle[aria-pressed="true"]{ border-color: var(--accent-agua); background: var(--accent-agua-soft); color: var(--accent-agua); }
+  select[multiple]{ height: 120px; }
+  .hint{ font-size: 0.74rem; color: var(--text-muted); margin: 4px 0 0; }
   .choice-card[aria-pressed="true"]{ border-color: currentColor; background: var(--accent-luz-soft); }
   .choice-card.agua[aria-pressed="true"]{ background: var(--accent-agua-soft); }
   .choice-card.incidente[aria-pressed="true"]{ background: var(--accent-incidente-soft); }
@@ -299,9 +308,14 @@
         </div>
       </div>
     </div>
-    <button class="icon-btn" id="infoBtn" title="Acerca de esta app" aria-label="Acerca de esta app">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-    </button>
+    <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="notifBtn" title="Notificaciones" aria-label="Notificaciones">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <button class="icon-btn" id="infoBtn" title="Acerca de esta app" aria-label="Acerca de esta app">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      </button>
+    </div>
   </header>
 
   <div id="demoBanner" class="banner demo" hidden>
@@ -375,10 +389,20 @@
         No incluyas placas completas, direcciones exactas ni fotos; describe solo lo esencial.
         Si hay riesgo de violencia o la persona podría estar huyendo de una situación de peligro,
         contacta directamente a las autoridades (171 / 166 / 167) en vez de publicar su ubicación aquí.
+        Por eso, en este tipo de reporte no se puede marcar un punto exacto en el mapa — solo tu parroquia.
       </div>
 
       <label class="field" for="zonaSelect">Parroquia</label>
       <select id="zonaSelect" required></select>
+
+      <div id="miniMapWrap" hidden>
+        <label class="field">Marca en el mapa aproximadamente dónde es (opcional)</label>
+        <div id="miniMap" style="height:200px;border-radius:12px;border:1.5px solid var(--border);"></div>
+        <div class="sheet-actions" style="margin-top:6px;">
+          <button type="button" class="btn" id="miniMapClearBtn" style="flex:none;padding:8px 14px;font-size:0.78rem;">Quitar marca</button>
+        </div>
+        <p class="hint">Toca el mapa para marcar el punto más cercano a donde ocurre esto — no hace falta que sea exacto. Si no marcas nada, se usará solo tu parroquia.</p>
+      </div>
 
       <label class="field" for="notaInput">Nota (opcional)</label>
       <textarea id="notaInput" maxlength="140" placeholder="Ej: desde hace 3 horas, cerca de la plaza..."></textarea>
@@ -415,6 +439,36 @@
     </div>
     <div class="sheet-actions">
       <button class="btn primary" id="closeAboutBtn">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notificaciones -->
+<div class="sheet-backdrop" id="notifBackdrop" hidden>
+  <div class="sheet">
+    <h2>Notificaciones</h2>
+    <p class="step-sub">Recibe un aviso en este navegador cuando alguien reporte algo. Sigue siempre a la ciudad que tengas seleccionada arriba — si la cambias, cambia también a cuál ciudad te avisan.</p>
+
+    <div id="notifNoSupport" class="disclaimer" hidden>
+      Este navegador no soporta notificaciones push, o falta instalar la app en la pantalla de inicio.
+      En iPhone: toca el botón "Compartir" en Safari y elige "Agregar a pantalla de inicio" — las notificaciones solo funcionan así, es una limitación de Apple, no de esta app.
+    </div>
+
+    <div id="notifForm">
+      <label class="field">Ciudad</label>
+      <div class="mono" id="notifCiudadTxt" style="font-size:0.9rem;"></div>
+
+      <label class="field">Categorías a seguir</label>
+      <div id="notifCategoriasGrid" class="chip-row"></div>
+
+      <label class="field" for="notifZonasSelect">Parroquias (opcional)</label>
+      <select id="notifZonasSelect" multiple></select>
+      <p class="hint">Deja sin marcar ninguna para recibir avisos de toda la ciudad.</p>
+
+      <div class="sheet-actions">
+        <button type="button" class="btn" id="notifOffBtn" hidden>Desactivar</button>
+        <button type="button" class="btn primary" id="notifOnBtn">Activar notificaciones</button>
+      </div>
     </div>
   </div>
 </div>
@@ -587,7 +641,7 @@ function datosDemo() {
   const ahora = Date.now();
   const min = (n) => new Date(ahora - n * 60000).toISOString();
   return [
-    { id: "d1", ciudad: "barquisimeto", categoria: "luz", subtipo: "corte", zona: "Catedral", severidad: null, nota: "Desde las 2pm en el centro", created_at: min(35) },
+    { id: "d1", ciudad: "barquisimeto", categoria: "luz", subtipo: "corte", zona: "Catedral", severidad: null, nota: "Desde las 2pm en el centro", lat: 10.0705, lng: -69.3441, created_at: min(35) },
     { id: "d2", ciudad: "barquisimeto", categoria: "agua", subtipo: "corte", zona: "Tamaca", severidad: null, nota: "", created_at: min(140) },
     { id: "d3", ciudad: "barquisimeto", categoria: "incidente", subtipo: "arbol_caido", zona: "Unión", severidad: "moderada", nota: "Bloquea un carril", created_at: min(50) },
     { id: "d4", ciudad: "barquisimeto", categoria: "luz", subtipo: "restablecido", zona: "Santa Rosa", severidad: null, nota: "", created_at: min(20) },
@@ -768,6 +822,26 @@ function renderMap() {
     }).bindPopup(popupHtml(z.nombre, agg));
     marker.addTo(markersLayer);
   });
+
+  // Reportes con un punto marcado a mano (nunca hay para Seguridad, ver
+  // el flujo de reporte) se dibujan además en su propia ubicación exacta,
+  // para no verse todos apilados en el mismo pin de la parroquia.
+  reportes
+    .filter((r) => r.lat != null && r.lng != null && !SEGURIDAD_CATEGORIAS.includes(r.categoria) && coincideFiltro(r))
+    .forEach((r) => {
+      const color = getVar(`--accent-${accentKey(r.categoria)}`);
+      const nota = r.nota ? `<div class="line" style="font-style:italic;">"${escapeHtml(r.nota)}"</div>` : "";
+      const marker = L.circleMarker([r.lat, r.lng], {
+        radius: 7,
+        color: "#ffffffcc",
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.95,
+      }).bindPopup(
+        `<div class="popup"><h3>${CATEGORIA_EM[r.categoria]} ${CATEGORIA_LABEL[r.categoria]}</h3><div class="line">${estadoTexto(r)} · ${haceTiempo(r.created_at)}</div>${nota}</div>`
+      );
+      marker.addTo(markersLayer);
+    });
 }
 
 // ---- Feed -----------------------------------------------------------------
@@ -892,6 +966,12 @@ function cerrarSheet() {
   submitBtn.disabled = true;
   avatarSel = null;
   avatarGrid.querySelectorAll(".avatar-opt").forEach((x) => x.setAttribute("aria-pressed", "false"));
+  pinLat = null;
+  pinLng = null;
+  if (miniMapMarker && miniMap) {
+    miniMap.removeLayer(miniMapMarker);
+    miniMapMarker = null;
+  }
 }
 
 document.getElementById("reportBtn").addEventListener("click", abrirSheet);
@@ -903,6 +983,49 @@ document.getElementById("cancelBtn2").addEventListener("click", () => {
 sheetBackdrop.addEventListener("click", (e) => { if (e.target === sheetBackdrop) cerrarSheet(); });
 
 let subtipoSel = null;
+
+// ---- Marca aproximada en el mapa (opcional, al reportar) -----------------
+// Nunca disponible para categorías de Seguridad (desaparecidos/vehículos
+// robados) — para esas, la ubicación se queda siempre a nivel de parroquia.
+let pinLat = null;
+let pinLng = null;
+let miniMap = null;
+let miniMapMarker = null;
+const miniMapWrap = document.getElementById("miniMapWrap");
+
+function inicializarMiniMapaSiHaceFalta() {
+  if (miniMap) return;
+  const c = ciudadActual();
+  miniMap = L.map("miniMap", { zoomControl: false, attributionControl: false }).setView([c.lat, c.lng], c.zoom - 1);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(miniMap);
+  miniMap.on("click", (e) => {
+    pinLat = e.latlng.lat;
+    pinLng = e.latlng.lng;
+    pintarMiniMapMarker();
+  });
+}
+
+function pintarMiniMapMarker() {
+  if (!miniMap) return;
+  if (miniMapMarker) {
+    miniMap.removeLayer(miniMapMarker);
+    miniMapMarker = null;
+  }
+  if (pinLat != null && pinLng != null) {
+    miniMapMarker = L.marker([pinLat, pinLng], { draggable: true }).addTo(miniMap);
+    miniMapMarker.on("dragend", () => {
+      const p = miniMapMarker.getLatLng();
+      pinLat = p.lat;
+      pinLng = p.lng;
+    });
+  }
+}
+
+document.getElementById("miniMapClearBtn").addEventListener("click", () => {
+  pinLat = null;
+  pinLng = null;
+  pintarMiniMapMarker();
+});
 
 document.querySelectorAll(".choice-card[data-categoria]").forEach((card) => {
   card.addEventListener("click", () => {
@@ -919,6 +1042,22 @@ function mostrarFormulario() {
   document.getElementById("formSub").textContent = "Elige lo que estás viendo en tu zona";
   document.getElementById("disclaimerBox").hidden = categoriaSel !== "incidente";
   document.getElementById("disclaimerSeguridad").hidden = !SEGURIDAD_CATEGORIAS.includes(categoriaSel);
+
+  const esSeguridad = SEGURIDAD_CATEGORIAS.includes(categoriaSel);
+  miniMapWrap.hidden = esSeguridad;
+  if (esSeguridad) {
+    pinLat = null;
+    pinLng = null;
+  } else {
+    inicializarMiniMapaSiHaceFalta();
+    setTimeout(() => {
+      if (!miniMap) return;
+      miniMap.invalidateSize();
+      const z = ciudadActual().zonas.find((zz) => zz.nombre === zonaSelect.value);
+      const c = ciudadActual();
+      miniMap.setView(z ? [z.lat, z.lng] : [c.lat, c.lng], z ? 15 : c.zoom - 1);
+    }, 50);
+  }
 
   const grid = document.getElementById("subtipoGrid");
   grid.className = "choice-grid two";
@@ -937,7 +1076,13 @@ function mostrarFormulario() {
   validar();
 }
 
-zonaSelect.addEventListener("change", validar);
+zonaSelect.addEventListener("change", () => {
+  validar();
+  if (miniMap && !SEGURIDAD_CATEGORIAS.includes(categoriaSel)) {
+    const z = ciudadActual().zonas.find((zz) => zz.nombre === zonaSelect.value);
+    if (z) miniMap.setView([z.lat, z.lng], 15);
+  }
+});
 notaInput.addEventListener("input", () => {
   document.getElementById("charCount").textContent = String(notaInput.value.length);
 });
@@ -975,6 +1120,10 @@ reportForm.addEventListener("submit", async (e) => {
     nota: notaInput.value.trim() || null,
     apodo: document.getElementById("apodoInput").value.trim() || null,
     avatar: avatarSel,
+    // Nunca se guarda un punto exacto para categorías de Seguridad, sin
+    // importar lo que haya quedado marcado en el mini-mapa (por si acaso).
+    lat: SEGURIDAD_CATEGORIAS.includes(categoriaSel) ? null : pinLat,
+    lng: SEGURIDAD_CATEGORIAS.includes(categoriaSel) ? null : pinLng,
   };
 
   submitBtn.disabled = true;
@@ -1017,6 +1166,164 @@ document.getElementById("closeAboutBtn").addEventListener("click", () => { docum
 document.getElementById("aboutBackdrop").addEventListener("click", (e) => {
   if (e.target === document.getElementById("aboutBackdrop")) document.getElementById("aboutBackdrop").hidden = true;
 });
+
+// ---- Notificaciones push -------------------------------------------------
+// Diseño: cada navegador sigue UNA sola ciudad a la vez — la misma que tiene
+// elegida en el selector 📍 de arriba. Si cambia de ciudad ahí, tiene que
+// volver a este panel y guardar de nuevo para seguir la ciudad nueva (se lo
+// avisamos con un toast). Es más simple que manejar varias suscripciones a
+// la vez, y coincide con cómo ya funciona el resto de la app (un reporte, un
+// mapa, una ciudad a la vez).
+const VAPID_PUBLIC_KEY = "BJ5LEnbbhk8zFvRkhOw2JaSVbV_88qHmqPglg1-z_cfXSwsfK43IWPXsrxt0CHiy5_KAulKtJi_42Hg-vgcKby8";
+const NOTIF_CATEGORIAS = ["luz", "agua", "internet", "incidente", "seguridad"];
+const NOTIF_CATEGORIA_LABEL = { luz: "Luz", agua: "Agua", internet: "Internet", incidente: "Incidencias", seguridad: "Seguridad" };
+const LS_NOTIF_PREFS = "altanto_notif_prefs";
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function soportaNotificaciones() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+let notifCatSel = new Set(NOTIF_CATEGORIAS); // por defecto, seguir todas las categorías
+const notifBackdrop = document.getElementById("notifBackdrop");
+const notifCategoriasGrid = document.getElementById("notifCategoriasGrid");
+const notifZonasSelect = document.getElementById("notifZonasSelect");
+const notifOnBtn = document.getElementById("notifOnBtn");
+const notifOffBtn = document.getElementById("notifOffBtn");
+
+function cargarPrefsGuardadas() {
+  try {
+    const p = JSON.parse(localStorage.getItem(LS_NOTIF_PREFS) || "null");
+    if (p && Array.isArray(p.categorias)) notifCatSel = new Set(p.categorias);
+    else notifCatSel = new Set(NOTIF_CATEGORIAS);
+    return p;
+  } catch (e) {
+    return null;
+  }
+}
+
+function pintarNotifForm() {
+  document.getElementById("notifCiudadTxt").textContent = ciudadActual().nombre;
+  notifCategoriasGrid.innerHTML = NOTIF_CATEGORIAS.map(
+    (c) => `<div class="chip-toggle" data-cat="${c}" aria-pressed="${notifCatSel.has(c)}">${NOTIF_CATEGORIA_LABEL[c]}</div>`
+  ).join("");
+  notifCategoriasGrid.querySelectorAll(".chip-toggle").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const cat = chip.dataset.cat;
+      if (notifCatSel.has(cat)) {
+        notifCatSel.delete(cat);
+        chip.setAttribute("aria-pressed", "false");
+      } else {
+        notifCatSel.add(cat);
+        chip.setAttribute("aria-pressed", "true");
+      }
+    });
+  });
+  const prefsGuardadas = JSON.parse(localStorage.getItem(LS_NOTIF_PREFS) || "null");
+  const zonasGuardadas = prefsGuardadas && prefsGuardadas.ciudad === ciudadActualId ? prefsGuardadas.zonas || [] : [];
+  notifZonasSelect.innerHTML = ciudadActual()
+    .zonas.map((z) => `<option value="${z.nombre}" ${zonasGuardadas.includes(z.nombre) ? "selected" : ""}>${z.nombre}</option>`)
+    .join("");
+}
+
+async function estaSuscrito() {
+  if (!soportaNotificaciones()) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function abrirNotifSheet() {
+  if (DEMO_MODE) {
+    mostrarToast("Conecta Supabase (ver SETUP.md) para activar notificaciones reales.");
+    return;
+  }
+  cargarPrefsGuardadas();
+  const soportado = soportaNotificaciones();
+  document.getElementById("notifNoSupport").hidden = soportado;
+  document.getElementById("notifForm").hidden = !soportado;
+  if (soportado) {
+    pintarNotifForm();
+    const sub = await estaSuscrito();
+    notifOffBtn.hidden = !sub;
+    notifOnBtn.textContent = sub ? "Guardar cambios" : "Activar notificaciones";
+  }
+  notifBackdrop.hidden = false;
+}
+
+async function guardarSuscripcion() {
+  notifOnBtn.disabled = true;
+  try {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== "granted") {
+      mostrarToast("No se activaron las notificaciones (permiso denegado en el navegador).");
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    const zonasElegidas = Array.from(notifZonasSelect.selectedOptions).map((o) => o.value);
+    const claveP256dh = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("p256dh"))));
+    const claveAuth = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth"))));
+    const fila = {
+      endpoint: sub.endpoint,
+      p256dh: claveP256dh,
+      auth: claveAuth,
+      ciudad: ciudadActualId,
+      categorias: notifCatSel.size === NOTIF_CATEGORIAS.length ? null : Array.from(notifCatSel),
+      zonas: zonasElegidas.length ? zonasElegidas : null,
+    };
+    const { error } = await supabaseClient.from("push_subscriptions").upsert(fila, { onConflict: "endpoint" });
+    if (error) throw error;
+    localStorage.setItem(LS_NOTIF_PREFS, JSON.stringify(fila));
+    mostrarToast(`¡Notificaciones activadas para ${ciudadActual().nombre}!`);
+    notifBackdrop.hidden = true;
+  } catch (err) {
+    mostrarToast("No se pudo activar. Intenta de nuevo.");
+  } finally {
+    notifOnBtn.disabled = false;
+  }
+}
+
+async function desactivarSuscripcion() {
+  notifOffBtn.disabled = true;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await supabaseClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+      await sub.unsubscribe();
+    }
+    localStorage.removeItem(LS_NOTIF_PREFS);
+    mostrarToast("Notificaciones desactivadas.");
+    notifBackdrop.hidden = true;
+  } catch (err) {
+    mostrarToast("No se pudo desactivar. Intenta de nuevo.");
+  } finally {
+    notifOffBtn.disabled = false;
+  }
+}
+
+document.getElementById("notifBtn").addEventListener("click", abrirNotifSheet);
+notifOnBtn.addEventListener("click", guardarSuscripcion);
+notifOffBtn.addEventListener("click", desactivarSuscripcion);
+notifBackdrop.addEventListener("click", (e) => { if (e.target === notifBackdrop) notifBackdrop.hidden = true; });
 
 // ---- Arranque -----------------------------------------------------------
 document.getElementById("demoBanner").hidden = !DEMO_MODE;

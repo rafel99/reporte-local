@@ -1476,5 +1476,11 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+<!-- Vercel Analytics: cuenta visitas a la app, sin cookies y sin poder
+     identificar a nadie individualmente. Solo funciona si activas
+     "Web Analytics" para este proyecto en el Dashboard de Vercel (ver
+     SETUP.md, sección "Contar visitas") — si no lo activas, este script
+     simplemente no hace nada. -->
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

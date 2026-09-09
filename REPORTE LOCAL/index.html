@@ -432,7 +432,7 @@ function datosDemo() {
 }
 
 // ---- Estado -----------------------------------------------------------
-let supabase = null;
+let supabaseClient = null;
 let reportes = [];
 let filtroActual = "todos";
 let categoriaSel = null;
@@ -441,7 +441,7 @@ const LS_CACHE_KEY = "altanto_cache_reportes";
 const LS_COOLDOWN_PREFIX = "altanto_cooldown_";
 
 if (!DEMO_MODE && window.supabase) {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // ---- Utilidades ---------------------------------------------------------
@@ -470,7 +470,7 @@ async function cargarReportes() {
   }
   try {
     const desde = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("reports")
       .select("*")
       .gte("created_at", desde)
@@ -724,7 +724,7 @@ reportForm.addEventListener("submit", async (e) => {
       reportes.unshift(r);
       localStorage.setItem("altanto_demo_reportes", JSON.stringify(reportes));
     } else {
-      const { error } = await supabase.from("reports").insert(nuevo);
+      const { error } = await supabaseClient.from("reports").insert(nuevo);
       if (error) throw error;
       await cargarReportes();
     }

@@ -1417,7 +1417,9 @@ async function guardarSuscripcion() {
     mostrarToast(`¡Notificaciones activadas para ${ciudadActual().nombre}!`);
     notifBackdrop.hidden = true;
   } catch (err) {
-    mostrarToast("No se pudo activar. Intenta de nuevo.");
+    console.error("No se pudo activar notificaciones:", err);
+    const detalle = (err && (err.message || err.error_description || err.error)) || String(err);
+    mostrarToast(`No se pudo activar: ${detalle}`);
   } finally {
     notifOnBtn.disabled = false;
   }

@@ -197,6 +197,12 @@
   .report-row .estado{ font-size: 0.84rem; color: var(--text); }
   .report-row .meta{ font-size: 0.74rem; color: var(--text-muted); margin-top:2px; }
   .report-row .nota{ font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; font-style: italic; }
+  .report-row .borrar-btn{
+    flex:none; width:28px; height:28px; border-radius:8px; border:1px solid var(--border);
+    background: var(--surface); color: var(--text-muted); font-size:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .report-row .borrar-btn:hover{ background: #e0433933; color:#e04339; border-color:#e0433955; }
   .empty{ font-size: 0.85rem; color: var(--text-muted); padding: 18px 6px; text-align:center; }
 
   .fab{
@@ -440,6 +446,9 @@
     <div class="sheet-actions">
       <button class="btn primary" id="closeAboutBtn">Entendido</button>
     </div>
+    <p style="text-align:center; margin-top:14px;">
+      <a href="#" id="adminToggleLink" style="font-size:0.72rem; color: var(--text-muted);">Modo administrador</a>
+    </p>
   </div>
 </div>
 
@@ -667,6 +676,9 @@ let map, markersLayer;
 const LS_CACHE_KEY = "altanto_cache_reportes";
 const LS_COOLDOWN_PREFIX = "altanto_cooldown_";
 const LS_CIUDAD_KEY = "altanto_ciudad";
+const LS_ADMIN_KEY = "altanto_admin_pass";
+let adminPassword = localStorage.getItem(LS_ADMIN_KEY) || null;
+function esAdmin() { return !!adminPassword; }
 
 let ciudadActualId = localStorage.getItem(LS_CIUDAD_KEY) || "barquisimeto";
 if (!CIUDADES.some((c) => c.id === ciudadActualId)) ciudadActualId = "barquisimeto";
@@ -873,15 +885,19 @@ function render() {
       const sev = r.severidad ? ` · severidad ${r.severidad}` : "";
       const nota = r.nota ? `<div class="nota">"${escapeHtml(r.nota)}"</div>` : "";
       const quien = r.apodo ? `${avatarOr(r, "🙂")} ${escapeHtml(r.apodo)}` : "Anónimo";
+      const borrar = esAdmin()
+        ? `<button type="button" class="borrar-btn" data-id="${r.id}" title="Borrar este reporte" aria-label="Borrar este reporte">🗑</button>`
+        : "";
       return `
         <div class="report-row">
           <div class="badge ${r.categoria}">${CATEGORIA_EM[r.categoria]}</div>
-          <div>
+          <div style="flex:1;">
             <div class="zona">${escapeHtml(r.zona)}</div>
             <div class="estado">${estadoTexto(r)}${sev}</div>
             ${nota}
             <div class="meta mono">${haceTiempo(r.created_at)} · ${quien}</div>
           </div>
+          ${borrar}
         </div>`;
     })
     .join("");
@@ -1165,6 +1181,112 @@ document.getElementById("infoBtn").addEventListener("click", () => { document.ge
 document.getElementById("closeAboutBtn").addEventListener("click", () => { document.getElementById("aboutBackdrop").hidden = true; });
 document.getElementById("aboutBackdrop").addEventListener("click", (e) => {
   if (e.target === document.getElementById("aboutBackdrop")) document.getElementById("aboutBackdrop").hidden = true;
+});
+
+// ---- Modo administrador (borrar reportes falsos/de broma) ----------------
+// Solo la persona que conoce la contraseña de administrador (definida como
+// Secret de la función "borrar-reporte" en Supabase) puede activar este
+// modo y ver el botón 🗑 en cada reporte. La contraseña se guarda solo en
+// este navegador (localStorage) — nunca se comparte con nadie más, y cada
+// intento de borrar se valida de nuevo en el servidor, no solo aquí.
+const BORRAR_FN_URL = !DEMO_MODE ? `${SUPABASE_URL}/functions/v1/borrar-reporte` : null;
+const adminToggleLink = document.getElementById("adminToggleLink");
+
+function actualizarTextoAdminLink() {
+  adminToggleLink.textContent = esAdmin() ? "Salir de modo administrador" : "Modo administrador";
+}
+actualizarTextoAdminLink();
+
+adminToggleLink.addEventListener("click", async (e) => {
+  e.preventDefault();
+  if (esAdmin()) {
+    adminPassword = null;
+    localStorage.removeItem(LS_ADMIN_KEY);
+    actualizarTextoAdminLink();
+    render();
+    return;
+  }
+  const intento = prompt("Contraseña de administrador:");
+  if (!intento) return;
+
+  if (DEMO_MODE) {
+    // En modo demostración no hay servidor que valide — solo permite
+    // probar cómo se ve el botón de borrar, sobre los datos de ejemplo.
+    adminPassword = intento;
+    localStorage.setItem(LS_ADMIN_KEY, adminPassword);
+    actualizarTextoAdminLink();
+    render();
+    mostrarToast("Modo administrador activado (modo demostración)");
+    return;
+  }
+
+  try {
+    const resp = await fetch(BORRAR_FN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ accion: "verificar", password: intento }),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.ok) {
+      adminPassword = intento;
+      localStorage.setItem(LS_ADMIN_KEY, adminPassword);
+      actualizarTextoAdminLink();
+      render();
+      mostrarToast("Modo administrador activado");
+    } else {
+      alert("Contraseña incorrecta.");
+    }
+  } catch (err) {
+    alert("No se pudo verificar la contraseña — revisa tu conexión e intenta de nuevo.");
+  }
+});
+
+document.getElementById("feedList").addEventListener("click", async (e) => {
+  const btn = e.target.closest(".borrar-btn");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (!confirm("¿Borrar este reporte? No se puede deshacer.")) return;
+
+  if (DEMO_MODE) {
+    const todos = JSON.parse(localStorage.getItem("altanto_demo_reportes") || "null") || datosDemo();
+    const restantes = todos.filter((r) => r.id !== id);
+    localStorage.setItem("altanto_demo_reportes", JSON.stringify(restantes));
+    reportes = reportes.filter((r) => r.id !== id);
+    render();
+    return;
+  }
+
+  try {
+    const resp = await fetch(BORRAR_FN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ accion: "borrar", password: adminPassword, id }),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.ok) {
+      reportes = reportes.filter((r) => r.id !== id);
+      render();
+      mostrarToast("Reporte borrado");
+    } else if (resp.status === 401) {
+      adminPassword = null;
+      localStorage.removeItem(LS_ADMIN_KEY);
+      actualizarTextoAdminLink();
+      render();
+      alert("Tu sesión de administrador ya no es válida — vuelve a activarla desde \"Acerca de\".");
+    } else {
+      alert("No se pudo borrar el reporte. Intenta de nuevo.");
+    }
+  } catch (err) {
+    alert("No se pudo borrar el reporte — revisa tu conexión e intenta de nuevo.");
+  }
 });
 
 // ---- Notificaciones push -------------------------------------------------

@@ -1411,8 +1411,23 @@ async function guardarSuscripcion() {
       categorias: notifCatSel.size === NOTIF_CATEGORIAS.length ? null : Array.from(notifCatSel),
       zonas: zonasElegidas.length ? zonasElegidas : null,
     };
-    const { error } = await supabaseClient.from("push_subscriptions").upsert(fila, { onConflict: "endpoint" });
-    if (error) throw error;
+    // No usamos "upsert": una tabla sin política de lectura pública (a
+    // propósito, por privacidad) no puede usar upsert/on-conflict — Postgres
+    // lo necesita para poder comparar contra la fila existente. En su lugar,
+    // intentamos insertar y, si ya existía esa misma suscripción (choque de
+    // "endpoint" único), la actualizamos por separado.
+    const { error: insertError } = await supabaseClient.from("push_subscriptions").insert(fila);
+    if (insertError) {
+      if (insertError.code === "23505") {
+        const { error: updateError } = await supabaseClient
+          .from("push_subscriptions")
+          .update(fila)
+          .eq("endpoint", fila.endpoint);
+        if (updateError) throw updateError;
+      } else {
+        throw insertError;
+      }
+    }
     localStorage.setItem(LS_NOTIF_PREFS, JSON.stringify(fila));
     mostrarToast(`¡Notificaciones activadas para ${ciudadActual().nombre}!`);
     notifBackdrop.hidden = true;
